@@ -1,5 +1,6 @@
 {
-  "name": "farmOS_wfs",
+  "name": "symbioquine/farmos_wfs",
+  "version": "0.0.1",
   "description": "WFS module for farmOS.",
   "type": "drupal-module",
   "homepage": "https://github.com/symbioquine/farmOS_wfs",
