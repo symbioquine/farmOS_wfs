@@ -21,17 +21,17 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
         with:
-          path: farm_wfs
+          path: farmos_wfs
       - name: Move module into codebase.
-        run: sudo mv farm_wfs www/farm_wfs
+        run: sudo mv farmos_wfs www/farmos_wfs
       - name: Add local repository to composer.json.
         run: >-
-          docker-compose exec -u www-data -T www composer config repositories.farm_wfs '{"type": "path", "url": "farm_wfs"}'
+          docker-compose exec -u www-data -T www composer config repositories.farmos_wfs '{"type": "path", "url": "farmos_wfs"}'
       - name: Require farm_wfs module and dependencies via Composer.
-        run: docker-compose exec -u www-data -T www composer require farm_wfs/farm_wfs
+        run: docker-compose exec -u www-data -T www composer require symbioquine/farmos_wfs
       - name: Change ownership of codebase to Apache.
         run: sudo chown -R www-data:www-data www
       - name: Run PHPUnit tests
-        run: docker-compose exec -u www-data -T test-runner phpunit --verbose --debug --group farm_wfs
+        run: docker-compose exec -u www-data -T test-runner phpunit --verbose --debug --group farmos_wfs
       - name: Run PHP CodeSniffer
-        run: docker-compose exec -u www-data -T www phpcs /opt/drupal/web/modules/contrib/farm_wfs
+        run: docker-compose exec -u www-data -T www phpcs /opt/drupal/web/modules/contrib/farmos_wfs
