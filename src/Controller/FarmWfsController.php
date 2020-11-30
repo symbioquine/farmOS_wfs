@@ -11,16 +11,22 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class FarmWfsController extends ControllerBase {
 
-    public function content() {
-        $host = \Drupal::request()->getSchemeAndHttpHost();
+  /**
+   * Top-level handler for WFS requests.
+   *
+   * @return \Symfony\Component\HttpFoundation\Response
+   *   The XML encoded WFS Response.
+   */
+  public function content() {
+    $host = \Drupal::request()->getSchemeAndHttpHost();
 
-        $site_name = Xss::filterAdmin(\Drupal::state()->get('site_name', 'Drupal'));
+    $site_name = Xss::filterAdmin(\Drupal::state()->get('site_name', 'Drupal'));
 
-        $crs = "EPSG:4326";
+    $crs = "EPSG:4326";
 
-        $response = new Response();
-        $response->headers->set('Content-Type', 'application/xml');
-        $response->setContent(<<<XML
+    $response = new Response();
+    $response->headers->set('Content-Type', 'application/xml');
+    $response->setContent(<<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <wfs:WFS_Capabilities
     xmlns:ows="http://www.opengis.net/ows"
@@ -205,7 +211,7 @@ class FarmWfsController extends ControllerBase {
 </wfs:WFS_Capabilities>
 XML);
 
-        return $response;
-    }
+    return $response;
+  }
 
 }

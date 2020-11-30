@@ -32,6 +32,6 @@ jobs:
       - name: Change ownership of codebase to Apache.
         run: sudo chown -R www-data:www-data www
       - name: Run PHPUnit tests
-        run: docker-compose exec -u www-data -T test-runner phpunit --verbose --debug --group farmos_wfs
+        run: docker-compose exec -u www-data -T --env SYMFONY_DEPRECATIONS_HELPER=weak test-runner phpunit --verbose --debug --group farmos_wfs
       - name: Run PHP CodeSniffer
         run: docker-compose exec -u www-data -T www phpcs /opt/drupal/web/modules/contrib/farmos_wfs
