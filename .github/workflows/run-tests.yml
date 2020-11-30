@@ -1,0 +1,37 @@
+name: Run 2.x PHPUnit tests
+on:
+  push:
+    branches:
+      - '2.x'
+      - '2.x-**'
+
+jobs:
+  build:
+    name: Run PHPUnit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create docker-compose.yml
+        run: curl https://raw.githubusercontent.com/farmOS/farmOS/2.x/docker/docker-compose.testing.yml -o docker-compose.yml
+      - name: Start containers
+        run: docker-compose up -d
+      - name: Wait until test-runner container is ready
+        # The test-runner-container-fs-ready file is only created once we expect the containers to be online
+        # so waiting for that lets us know it is safe to start the tests
+        run: until [ -f ./www/test-runner-container-fs-ready ]; do sleep 0.1; done
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+        with:
+          path: farm_wfs
+      - name: Move module into codebase.
+        run: sudo mv farm_wfs www/farm_wfs
+      - name: Add local repository to composer.json.
+        run: >-
+          docker-compose exec -u www-data -T www composer config repositories.farm_wfs '{"type": "path", "url": "farm_wfs"}'
+      - name: Require farm_wfs module and dependencies via Composer.
+        run: docker-compose exec -u www-data -T www composer require farm_wfs/farm_wfs
+      - name: Change ownership of codebase to Apache.
+        run: sudo chown -R www-data:www-data www
+      - name: Run PHPUnit tests
+        run: docker-compose exec -u www-data -T test-runner phpunit --verbose --debug --group farm_wfs
+      - name: Run PHP CodeSniffer
+        run: docker-compose exec -u www-data -T www phpcs /opt/drupal/web/modules/contrib/farm_wfs
