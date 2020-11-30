@@ -1,0 +1,5 @@
+name: farmOS WFS
+description: Provides a WFS endpoint for farmOS
+type: module
+package: farmOS
+core_version_requirement: ^9

@@ -1,0 +1,22 @@
+{
+  "name": "farmOS_wfs",
+  "description": "WFS module for farmOS.",
+  "type": "drupal-module",
+  "homepage": "https://github.com/symbioquine/farmOS_wfs",
+  "authors": [
+    {
+      "name": "Symbioquine",
+      "homepage": "https://github.com/symbioquine",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/symbioquine/farmOS_wfs/issues",
+    "source": "https://github.com/symbioquine/farmOS_wfs"
+  },
+  "license": "GPL-3.0-or-later",
+  "minimum-stability": "dev",
+  "require": {
+    "phayes/geophp": "^1.2"
+  }
+}

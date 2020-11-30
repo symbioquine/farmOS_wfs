@@ -1,0 +1,6 @@
+example.content:
+  path: '/wfs'
+  defaults:
+    _controller: '\Drupal\farm_wfs\Controller\FarmWfsController::content'
+  requirements:
+    _permission: 'access content'

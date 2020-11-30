@@ -47,3 +47,6 @@
 /robots.txt
 /update.php
 /web.config
+
+# Ignore misc
+.project
