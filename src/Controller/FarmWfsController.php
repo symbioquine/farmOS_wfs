@@ -45,7 +45,7 @@ class FarmWfsController extends ControllerBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    return new static($container->get('request_stack'));
+    return new static($container->get('request_stack'), $container->get('state'));
   }
 
   /**
