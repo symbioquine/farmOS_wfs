@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\farm_wfs\Controller;
+namespace Drupal\farmos_wfs\Controller;
 
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\State\State;
