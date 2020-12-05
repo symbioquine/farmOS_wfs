@@ -1,69 +1,25 @@
 <?php
 
-namespace Drupal\farmos_wfs\Controller;
-
-use Drupal\Component\Utility\Xss;
-use Drupal\Core\State\State;
-use Drupal\Core\Controller\ControllerBase;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\RequestStack;
+/**
+ * @file
+ * handle_wfs_request.inc
+ */
 
 /**
- * Defines FarmWfsController class.
+ * Handle WFS requests and return XML responses.
+ *
+ * @return string
  */
-class FarmWfsController extends ControllerBase {
+function handle_wfs_request() {
+  $host = $base_url;
 
-  /**
-   * The request stack.
-   *
-   * @var \Symfony\Component\HttpFoundation\RequestStack
-   */
-  protected $requestStack;
+  $site_name = filter_xss_admin(variable_get('site_name', 'farmOS'));
 
-  /**
-   * The state store.
-   *
-   * @var \Drupal\Core\State\State
-   */
-  protected $state;
+  $crs = "EPSG:4326";
 
-  /**
-   * Constructs a new FarmWfsController object.
-   *
-   * @param \Symfony\Component\HttpFoundation\RequestStack $requestStack
-   *   The request stack.
-   * @param \Drupal\Core\State\State $state
-   *   The object State.
-   */
-  public function __construct(RequestStack $requestStack, State $state) {
-    $this->requestStack = $requestStack;
-    $this->state = $state;
-  }
+  drupal_add_http_header('Content-Type', 'application/xml; utf-8');
 
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container) {
-    return new static($container->get('request_stack'), $container->get('state'));
-  }
-
-  /**
-   * Top-level handler for WFS requests.
-   *
-   * @return \Symfony\Component\HttpFoundation\Response
-   *   The XML encoded WFS Response.
-   */
-  public function content() {
-    $host = $this->requestStack->getCurrentRequest()->getSchemeAndHttpHost();
-
-    $site_name = Xss::filterAdmin($this->state->get('site_name', 'farmOS'));
-
-    $crs = "EPSG:4326";
-
-    $response = new Response();
-    $response->headers->set('Content-Type', 'application/xml');
-    $response->setContent(<<<XML
+  print <<<XML
     <?xml version="1.0" encoding="UTF-8"?>
     <wfs:WFS_Capabilities
         xmlns:ows="http://www.opengis.net/ows"
@@ -246,9 +202,7 @@ class FarmWfsController extends ControllerBase {
        </wfs:FeatureTypeList>
     
     </wfs:WFS_Capabilities>
-    XML);
+    XML;
 
-    return $response;
-  }
-
+  drupal_exit();
 }

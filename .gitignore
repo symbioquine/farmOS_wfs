@@ -50,3 +50,5 @@
 
 # Ignore misc
 .project
+docker/www
+docker/db

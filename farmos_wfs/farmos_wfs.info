@@ -1,0 +1,4 @@
+name = farmOS WFS
+description = Provides a WFS endpoint for farmOS
+core = 7.x
+package = farmOS Contrib

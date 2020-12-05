@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * @file
+ * WFS module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function farmos_wfs_menu() {
+  $items = array();
+  $items['wfs'] = array(
+    'title' => 'WFS Endpoint',
+    'description' => 'Provides a WFS endpoint for farmOS',
+    'file' => 'handle_wfs_request.inc',
+    'page callback' => 'handle_wfs_request',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+* Implements hook_init().
+*/
+
+function farmos_wfs_init() {
+  if (current_path() == 'wfs') {
+    drupal_page_is_cacheable(FALSE);
+  }
+}
