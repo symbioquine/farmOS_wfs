@@ -1,4 +1,5 @@
 name = farmOS WFS
 description = Provides a WFS endpoint for farmOS
 core = 7.x
+php = 7.4
 package = farmOS Contrib
