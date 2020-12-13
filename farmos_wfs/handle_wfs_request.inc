@@ -33,6 +33,8 @@ function handle_wfs_request() {
 
   $request_handlers = array(
     'GetCapabilities' => 'handle_wfs_get_capabilities_request',
+    'DescribeFeatureType' => 'handle_wfs_describe_feature_type_request',
+    'GetFeature' => 'handle_wfs_get_feature_request',
   );
 
   $requested_operation = $query_params['REQUEST'] ?? null;

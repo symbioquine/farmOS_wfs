@@ -83,7 +83,6 @@ function handle_wfs_get_capabilities_request($query_params) {
            <ows:DCP>
               <ows:HTTP>
                  <ows:Get xlink:href="$host/wfs"/>
-                 <ows:Post xlink:href="$host/wfs"/>
               </ows:HTTP>
            </ows:DCP>
            <ows:Parameter name="outputFormat">
@@ -95,41 +94,12 @@ function handle_wfs_get_capabilities_request($query_params) {
            <ows:DCP>
               <ows:HTTP>
                  <ows:Get xlink:href="$host/wfs"/>
-                 <ows:Post xlink:href="$host/wfs"/>
               </ows:HTTP>
            </ows:DCP>
-           <ows:Parameter name="resultType">
-              <ows:Value>results</ows:Value>
-              <ows:Value>hits</ows:Value>
-           </ows:Parameter>
            <ows:Parameter name="outputFormat">
               <ows:Value>text/xml; subtype=gml/3.1.1</ows:Value>
            </ows:Parameter>
         </ows:Operation>
-  
-        <ows:Operation name="Transaction">
-           <ows:DCP>
-              <ows:HTTP>
-                 <ows:Post xlink:href="$host/wfs"/>
-              </ows:HTTP>
-           </ows:DCP>
-           <ows:Parameter name="inputFormat">
-              <ows:Value>text/xml; subtype=gml/3.1.1</ows:Value>
-           </ows:Parameter>
-           <ows:Parameter name="idgen">
-              <ows:Value>GenerateNew</ows:Value>
-              <ows:Value>UseExisting</ows:Value>
-              <ows:Value>ReplaceDuplicate</ows:Value>
-           </ows:Parameter>
-        </ows:Operation>
-  
-        <ows:Parameter name="srsName">
-           <ows:Value>$crs</ows:Value>
-        </ows:Parameter>
-  
-        <ows:Constraint name="DefaultMaxFeatures">
-           <ows:Value>10000</ows:Value>
-        </ows:Constraint>
   
      </ows:OperationsMetadata>
   
@@ -143,7 +113,7 @@ function handle_wfs_get_capabilities_request($query_params) {
         </wfs:Operations>
   
         <wfs:FeatureType>
-           <wfs:Name>farmos:PointAreaType</wfs:Name>
+           <wfs:Name>farmos:PointArea</wfs:Name>
            <wfs:Title>farmOS Point Area Feature</wfs:Title>
            <wfs:Abstract>
               Point area features in farmOS.
@@ -152,15 +122,10 @@ function handle_wfs_get_capabilities_request($query_params) {
            <wfs:OutputFormats>
               <wfs:Format>text/xml; subtype=gml/3.1.1</wfs:Format>
            </wfs:OutputFormats>
-          <wfs:Operations>
-             <wfs:Operation>Insert</wfs:Operation>
-             <wfs:Operation>Update</wfs:Operation>
-             <wfs:Operation>Delete</wfs:Operation>
-          </wfs:Operations>
         </wfs:FeatureType>
   
         <wfs:FeatureType>
-           <wfs:Name>farmos:PolygonAreaType</wfs:Name>
+           <wfs:Name>farmos:PolygonArea</wfs:Name>
            <wfs:Title>farmOS Polygon Area Feature</wfs:Title>
            <wfs:Abstract>
               Polygon area features in farmOS.
@@ -169,15 +134,10 @@ function handle_wfs_get_capabilities_request($query_params) {
            <wfs:OutputFormats>
               <wfs:Format>text/xml; subtype=gml/3.1.1</wfs:Format>
            </wfs:OutputFormats>
-          <wfs:Operations>
-             <wfs:Operation>Insert</wfs:Operation>
-             <wfs:Operation>Update</wfs:Operation>
-             <wfs:Operation>Delete</wfs:Operation>
-          </wfs:Operations>
         </wfs:FeatureType>
   
         <wfs:FeatureType>
-           <wfs:Name>farmos:LineStringAreaType</wfs:Name>
+           <wfs:Name>farmos:LineStringArea</wfs:Name>
            <wfs:Title>farmOS Line String Area Feature</wfs:Title>
            <wfs:Abstract>
               Line string area features in farmOS.
@@ -186,11 +146,6 @@ function handle_wfs_get_capabilities_request($query_params) {
            <wfs:OutputFormats>
               <wfs:Format>text/xml; subtype=gml/3.1.1</wfs:Format>
            </wfs:OutputFormats>
-          <wfs:Operations>
-             <wfs:Operation>Insert</wfs:Operation>
-             <wfs:Operation>Update</wfs:Operation>
-             <wfs:Operation>Delete</wfs:Operation>
-          </wfs:Operations>
         </wfs:FeatureType>
   
      </wfs:FeatureTypeList>
