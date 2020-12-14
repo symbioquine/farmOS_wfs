@@ -105,19 +105,33 @@ function handle_wfs_get_feature_request($query_params) {
         "http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd",
     ), function($featureCollection, $elem) use ($requested_type_names, $areas, $requested_type_names_by_geofield_geo_type) {
 
+      $limits = array();
+      $accumulate_limit = function($source, $edge, $accumulator) use (&$limits) {
+        if (!isset($source[$edge])) {
+          return;
+        }
+        if (!isset($limits[$edge])) {
+          $limits[$edge] = (float) $source[$edge];
+        } else {
+          $limits[$edge] = $accumulator((float) $source[$edge], $limits[$edge]);
+        }
+      };
+
       foreach($areas as $area) {
 
-        $geo_type = $area->field_farm_geofield[LANGUAGE_NONE][0]['geo_type'];
+        $geofield = $area->field_farm_geofield[LANGUAGE_NONE][0];
+
+        $geo_type = $geofield['geo_type'];
         $type_name = $requested_type_names_by_geofield_geo_type[$geo_type];
 
         $geometry_type = preg_replace('/^farmos:(.*)Area$/', '$1', $type_name);
 
         // Get WKT from the field. If empty, bail.
-        if (empty($area->field_farm_geofield[LANGUAGE_NONE][0]['geom'])) {
+        if (empty($geofield['geom'])) {
           continue;
         }
 
-        $wkt = $area->field_farm_geofield[LANGUAGE_NONE][0]['geom'];
+        $wkt = $geofield['geom'];
 
         geophp_load();
         $geom = geoPHP::load($wkt, 'wkt');
@@ -127,12 +141,19 @@ function handle_wfs_get_feature_request($query_params) {
           continue;
         }
 
+        $accumulate_limit($geofield, 'left', 'min');
+        $accumulate_limit($geofield, 'bottom', 'min');
+        $accumulate_limit($geofield, 'top', 'max');
+        $accumulate_limit($geofield, 'right', 'max');
+
         $featureCollection->appendChild($elem('gml:featureMember', [],
-          function($featureMember, $elem) use ($area, $geometry_type, $geom) {
+          function($featureMember, $elem) use ($area, $geometry_type, $geofield, $geom) {
 
             $featureMember->appendChild($elem("farmos:{$geometry_type}Area", array(
               'gml:id'  => "{$geometry_type}Area.{$area->tid}",
-            ), function($feature, $elem) use ($area, $geom) {
+            ), function($feature, $elem) use ($area, $geofield, $geom) {
+
+              $feature->appendChild(gml_bounded_by($geofield, $elem));
 
               $feature->appendChild($elem('farmos:geometry', [],
                 function($geometry, $elem) use ($area, $geom) {
@@ -167,10 +188,26 @@ function handle_wfs_get_feature_request($query_params) {
           }));
       }
 
+      $featureCollection->appendChild(gml_bounded_by($limits, $elem));
+
     }));
   })->saveXML();
   drupal_exit();
   return;
+}
+
+function gml_bounded_by($limits, $elem) {
+  return $elem('gml:boundedBy', [],
+    function($boundedBy, $elem) use ($limits) {
+
+      $boundedBy->appendChild($elem('gml:Envelope', array(
+        'srsName' => FARMOS_WFS_DEFAULT_CRS,
+      ), function($envelope, $elem) use ($limits) {
+        $envelope->appendChild($elem('gml:lowerCorner', [], "{$limits['left']} {$limits['bottom']}"));
+        $envelope->appendChild($elem('gml:upperCorner', [], "{$limits['right']} {$limits['top']}"));
+      }));
+
+  });
 }
 
 function geophp_to_gml_three_point_one_point_one(Geometry $geometry, $elem) {
