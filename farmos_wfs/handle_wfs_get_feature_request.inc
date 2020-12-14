@@ -188,7 +188,9 @@ function handle_wfs_get_feature_request($query_params) {
           }));
       }
 
-      $featureCollection->appendChild(gml_bounded_by($limits, $elem));
+      if (!empty($limits)) {
+        $featureCollection->appendChild(gml_bounded_by($limits, $elem));
+      }
 
     }));
   })->saveXML();

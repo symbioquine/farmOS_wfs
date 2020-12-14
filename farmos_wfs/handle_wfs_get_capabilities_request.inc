@@ -10,9 +10,7 @@ function handle_wfs_get_capabilities_request($query_params) {
 
   $host = $base_url;
 
-  $site_name = filter_xss_admin(variable_get('site_name', 'farmOS'));
-
-  print farmos_wfs_makeDoc(function($doc, $elem) use ($site_name, $host) {
+  print farmos_wfs_makeDoc(function($doc, $elem) use ($host) {
     $doc->appendChild($elem('wfs:WFS_Capabilities', array(
       "xmlns:farmos" => "https://farmos.org/wfs",
       'xmlns:gml' => "http://www.opengis.net/gml",
@@ -23,7 +21,7 @@ function handle_wfs_get_capabilities_request($query_params) {
       'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
       'xsi:schemaLocation' => "http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd",
       'version' => "1.1.0",
-    ), function($wfsCapabilities, $elem) use ($site_name, $host) {
+    ), function($wfsCapabilities, $elem) use ($host) {
 
       $wfsCapabilities->appendChild($elem('ows:ServiceIdentification', [],
         function($serviceIdentification, $elem) {
@@ -43,9 +41,9 @@ function handle_wfs_get_capabilities_request($query_params) {
       }));
 
       $wfsCapabilities->appendChild($elem('ows:ServiceProvider', [],
-        function($serviceProvider, $elem) use ($site_name, $host) {
+        function($serviceProvider, $elem) use ($host) {
 
-          $serviceProvider->appendChild($elem('ows:ProviderName', [], $site_name));
+          $serviceProvider->appendChild($elem('ows:ProviderName', [], filter_xss_admin(variable_get('site_name', 'farmOS'))));
           $serviceProvider->appendChild($elem('ows:ProviderSite', array(
             'xlink:href' => $host
           )));
@@ -53,7 +51,7 @@ function handle_wfs_get_capabilities_request($query_params) {
       }));
 
       $wfsCapabilities->appendChild($elem('ows:OperationsMetadata', [],
-        function($operationsMetadata, $elem) use ($site_name, $host) {
+        function($operationsMetadata, $elem) use ($host) {
 
           foreach(["GetCapabilities", "DescribeFeatureType", "GetFeature"] as $operationName) {
 

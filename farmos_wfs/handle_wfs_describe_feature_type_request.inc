@@ -6,14 +6,6 @@
  */
 
 function handle_wfs_describe_feature_type_request($query_params) {
-  global $base_url;
-
-  $host = $base_url;
-
-  $site_name = filter_xss_admin(variable_get('site_name', 'farmOS'));
-
-  $crs = FARMOS_WFS_DEFAULT_CRS;
-
   $requested_type_names = array_filter(explode(',', $query_params['TYPENAME'] ?? ''));
 
   $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
