@@ -137,6 +137,31 @@ function handle_wfs_get_capabilities_request($query_params) {
                   function($outputFormats, $elem) {
                     $outputFormats->appendChild($elem('wfs:Format', [], "text/xml; subtype=gml/3.1.1"));
                 }));
+
+                $geo_type = strtolower($geometry_type);
+
+                $limits = db_query("SELECT
+                      min(field_farm_geofield_left) AS 'left',
+                      min(field_farm_geofield_bottom) AS 'bottom',
+                      max(field_farm_geofield_right) AS 'right',
+                      max(field_farm_geofield_top) AS 'top'
+                    FROM
+                      {field_data_field_farm_geofield} g
+                    WHERE g.bundle = 'farm_areas' AND g.field_farm_geofield_geo_type = :geo_type
+                    GROUP BY g.field_farm_geofield_geo_type",
+                  array(':geo_type' => $geo_type))->fetchAll();
+
+                if (!empty($limits)) {
+
+                  $featureType->appendChild($elem('ows:WGS84BoundingBox', array(
+                    'dimensions' => "2",
+                  ), function($bbox, $elem) use ($limits) {
+                    $bbox->appendChild($elem('ows:LowerCorner', [], "{$limits[0]->left} {$limits[0]->bottom}"));
+                    $bbox->appendChild($elem('ows:UpperCorner', [], "{$limits[0]->right} {$limits[0]->top}"));
+                  }));
+
+                }
+
             }));
 
           }
