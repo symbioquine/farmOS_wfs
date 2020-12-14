@@ -12,8 +12,6 @@ function handle_wfs_get_feature_request($query_params) {
 
   $requested_type_names = array_filter(explode(',', $query_params['TYPENAME'] ?? ''));
 
-  dpm($query_params['FILTER'] ?? null);
-
   $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
 
   $unknown_type_names = array_diff_key($requested_type_names, $known_type_names);
@@ -50,10 +48,44 @@ function handle_wfs_get_feature_request($query_params) {
 
   $requested_geometry_types = array_keys($requested_type_names_by_geofield_geo_type);
 
+  dpm($query_params['FILTER'] ?? null);
+
+  $bbox = array_filter(explode(',', $query_params['BBOX'] ?? ''));
+
+  if (!empty($bbox) && (count($bbox) < 4 || count($bbox) > 5)) {
+    print farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+      $eReport->appendChild($elem('Exception', array(
+        "exceptionCode"  => "InvalidParameterValue",
+        "locator" => "bbox",
+      )));
+    });
+    drupal_exit();
+    return;
+  }
+
+  if (count($bbox) > 4 && $bbox[4] != 'EPSG:4326') {
+    print farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+      $eReport->appendChild($elem('Exception', array(
+        "exceptionCode"  => "InvalidParameterValue",
+        "locator" => "bbox",
+      )));
+    });
+    drupal_exit();
+    return;
+  }
+
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'taxonomy_term')
     ->entityCondition('bundle', 'farm_areas')
-    ->fieldCondition('field_farm_geofield', 'geo_type', $requested_geometry_types, 'IN');
+    ->fieldCondition('field_farm_geofield', 'geo_type', $requested_geometry_types, 'IN', 0);
+
+  // TODO: Consider handling features and/or bounding boxes which cross the anti-meridian
+  if (!empty($bbox)) {
+    $query->fieldCondition('field_farm_geofield', 'top', $bbox[0], '>=', 0);
+    $query->fieldCondition('field_farm_geofield', 'right', $bbox[1], '>=', 0);
+    $query->fieldCondition('field_farm_geofield', 'bottom', $bbox[2], '<=', 0);
+    $query->fieldCondition('field_farm_geofield', 'left', $bbox[3], '<=', 0);
+  }
 
   $result = $query->execute();
   if (isset($result['taxonomy_term'])) {

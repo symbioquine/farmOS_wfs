@@ -150,6 +150,14 @@ function handle_wfs_get_capabilities_request($query_params) {
   
      </wfs:FeatureTypeList>
   
+     <ogc:Filter_Capabilities>
+       <ogc:Spatial_Capabilities>
+         <ogc:SpatialOperators>
+           <ogc:SpatialOperator name="BBOX"/>
+         </ogc:SpatialOperators>
+       </ogc:Spatial_Capabilities>
+     </ogc:Filter_Capabilities>
+  
   </wfs:WFS_Capabilities>
   XML;
 
