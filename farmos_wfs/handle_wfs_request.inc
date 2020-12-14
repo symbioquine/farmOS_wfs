@@ -63,15 +63,19 @@ function farmos_wfs_makeDoc($declarator) {
   $xml = new DomDocument('1.0', 'UTF-8');
 
   $elem = null;
-  $elem = function($name, $attrs, $elemDeclarator = null) use ($xml, &$elem) {
+  $elem = function($name, $attrs, $elemContent = null) use ($xml, &$elem) {
     $e = $xml->createElement($name);
 
     foreach ($attrs as $attrKey => $attrVal) {
       $e->setAttribute($attrKey, $attrVal);
     }
 
-    if ($elemDeclarator) {
-      $elemDeclarator($e, $elem);
+    if ($elemContent) {
+      if (is_callable($elemContent)) {
+        $elemContent($e, $elem);
+      } elseif (is_string($elemContent)) {
+        $e->nodeValue = $elemContent;
+      }
     }
 
     return $e;

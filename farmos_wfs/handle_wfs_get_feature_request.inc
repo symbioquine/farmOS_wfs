@@ -48,8 +48,6 @@ function handle_wfs_get_feature_request($query_params) {
 
   $requested_geometry_types = array_keys($requested_type_names_by_geofield_geo_type);
 
-  dpm($query_params['FILTER'] ?? null);
-
   $bbox = array_filter(explode(',', $query_params['BBOX'] ?? ''));
 
   if (!empty($bbox) && (count($bbox) < 4 || count($bbox) > 5)) {
@@ -94,8 +92,6 @@ function handle_wfs_get_feature_request($query_params) {
   } else {
     $areas = array();
   }
-
-  dpm($areas);
 
   print farmos_wfs_makeDoc(function($doc, $elem) use ($host, $query_params, $requested_type_names, $areas, $requested_type_names_by_geofield_geo_type) {
     $doc->appendChild($elem('wfs:FeatureCollection', array(
