@@ -68,6 +68,11 @@ function handle_wfs_describe_feature_type_request($query_params) {
                   function($sequence, $elem) use ($geometry_type) {
 
                     $sequence->appendChild($elem('xsd:element', array(
+                      "name"  => "area_id",
+                      "type" => "string",
+                    )));
+
+                    $sequence->appendChild($elem('xsd:element', array(
                       "name"  => "geometry",
                       "type" => "gml:{$geometry_type}PropertyType",
                     )));

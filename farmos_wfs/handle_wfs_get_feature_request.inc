@@ -162,26 +162,10 @@ function handle_wfs_get_feature_request($query_params) {
 
                 }));
 
-              $feature->appendChild($elem('farmos:name', [],
-                function($areaName, $elem) use ($area) {
-
-                  $areaName->nodeValue = $area->name;
-
-                }));
-
-              $feature->appendChild($elem('farmos:area_type', [],
-                function($areaType, $elem) use ($area) {
-
-                  $areaType->nodeValue = ($area->field_farm_area_type[LANGUAGE_NONE][0]['value'] ?? '');
-
-                }));
-
-              $feature->appendChild($elem('farmos:description', [],
-                function($areaDescription, $elem) use ($area) {
-
-                  $areaDescription->nodeValue = $area->description;
-
-                }));
+              $feature->appendChild($elem('farmos:area_id', [], "{$area->tid}"));
+              $feature->appendChild($elem('farmos:name', [], $area->name));
+              $feature->appendChild($elem('farmos:area_type', [], ($area->field_farm_area_type[LANGUAGE_NONE][0]['value'] ?? '')));
+              $feature->appendChild($elem('farmos:description', [], $area->description));
 
             }));
 
