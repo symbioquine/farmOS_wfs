@@ -17,25 +17,21 @@ function handle_wfs_get_feature_request($query_params) {
   $unknown_type_names = array_diff_key($requested_type_names, $known_type_names);
 
   if (!empty($unknown_type_names)) {
-    print farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+    return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
       $eReport->appendChild($elem('Exception', array(
         "exceptionCode"  => "InvalidParameterValue",
         "locator" => "typename",
       )));
     });
-    drupal_exit();
-    return;
   }
 
   if (empty($requested_type_names)) {
-    print farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+    return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
       $eReport->appendChild($elem('Exception', array(
         "exceptionCode"  => "MissingParameterValue",
         "locator" => "typename",
       )));
     });
-    drupal_exit();
-    return;
   }
 
   $requested_type_names_by_geofield_geo_type = array();
@@ -51,25 +47,21 @@ function handle_wfs_get_feature_request($query_params) {
   $bbox = array_filter(explode(',', $query_params['BBOX'] ?? ''));
 
   if (!empty($bbox) && (count($bbox) < 4 || count($bbox) > 5)) {
-    print farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+    return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
       $eReport->appendChild($elem('Exception', array(
         "exceptionCode"  => "InvalidParameterValue",
         "locator" => "bbox",
       )));
     });
-    drupal_exit();
-    return;
   }
 
   if (count($bbox) > 4 && $bbox[4] != 'EPSG:4326') {
-    print farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+    return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
       $eReport->appendChild($elem('Exception', array(
         "exceptionCode"  => "InvalidParameterValue",
         "locator" => "bbox",
       )));
     });
-    drupal_exit();
-    return;
   }
 
   $query = new EntityFieldQuery();
@@ -93,7 +85,7 @@ function handle_wfs_get_feature_request($query_params) {
     $areas = array();
   }
 
-  print farmos_wfs_makeDoc(function($doc, $elem) use ($host, $query_params, $requested_type_names, $areas, $requested_type_names_by_geofield_geo_type) {
+  return farmos_wfs_makeDoc(function($doc, $elem) use ($host, $query_params, $requested_type_names, $areas, $requested_type_names_by_geofield_geo_type) {
     $doc->appendChild($elem('wfs:FeatureCollection', array(
       "xmlns:farmos" => "https://farmos.org/wfs",
       'xmlns:gml' => "http://www.opengis.net/gml",
@@ -177,9 +169,7 @@ function handle_wfs_get_feature_request($query_params) {
       }
 
     }));
-  })->saveXML();
-  drupal_exit();
-  return;
+  });
 }
 
 function gml_bounded_by($limits, $elem) {

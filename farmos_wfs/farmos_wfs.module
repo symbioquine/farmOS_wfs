@@ -5,6 +5,9 @@
  * WFS module.
  */
 
+define("FARMOS_WFS_IMPLEMENTATION_VERSION", '1.1.0');
+define("FARMOS_WFS_DEFAULT_CRS", 'EPSG:4326');
+
 /**
  * Implements hook_menu().
  */
@@ -15,7 +18,8 @@ function farmos_wfs_menu() {
     'description' => 'Provides a WFS endpoint for farmOS',
     'file' => 'handle_wfs_request.inc',
     'page callback' => 'handle_wfs_request',
-    'access arguments' => array('access content'),
+    'access arguments' => array('view farm areas'),
+    'delivery callback' => 'farmos_wfs_deliver_results',
     'type' => MENU_CALLBACK,
   );
   return $items;
@@ -29,4 +33,73 @@ function farmos_wfs_init() {
   if (current_path() == 'wfs') {
     drupal_page_is_cacheable(FALSE);
   }
+}
+
+/**
+ * Transform responses the final output.
+ */
+function farmos_wfs_deliver_results($page_callback_result) {
+
+  if (is_int($page_callback_result) && $page_callback_result == MENU_ACCESS_DENIED) {
+
+    drupal_add_http_header('Status', '403 Forbidden');
+
+    $page_callback_result = farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+      $eReport->appendChild($elem('Exception', array(
+        "exceptionCode"  => "AccessDenied",
+      ), $elem('ExceptionText', [], "Access denied")));
+    });
+
+  }
+
+  if ($page_callback_result instanceof DOMDocument) {
+    drupal_add_http_header('Content-Type', 'application/xml; utf-8');
+    print $page_callback_result->saveXML();
+    return drupal_exit();
+  }
+
+  return drupal_deliver_html_page($page_callback_result);
+}
+
+function farmos_wfs_makeDoc($declarator) {
+  $xml = new DomDocument('1.0', 'UTF-8');
+
+  $elem = null;
+  $elem = function($name, $attrs, $elemContent = null) use ($xml, &$elem) {
+    $e = $xml->createElement($name);
+
+    foreach ($attrs as $attrKey => $attrVal) {
+      $e->setAttribute($attrKey, $attrVal);
+    }
+
+    if ($elemContent) {
+      if (is_callable($elemContent)) {
+        $elemContent($e, $elem);
+      } elseif ($elemContent instanceof DOMNode) {
+        $e->appendChild($elemContent);
+      } elseif (is_string($elemContent)) {
+        $e->nodeValue = $elemContent;
+      }
+    }
+
+    return $e;
+  };
+
+  $declarator($xml, $elem);
+
+  $xml->formatOutput = TRUE;
+
+  return $xml;
+}
+
+function farmos_wfs_makeExceptionReport($declarator) {
+  return farmos_wfs_makeDoc(function($doc, $elem) use ($declarator) {
+    $doc->appendChild($elem('ExceptionReport', array(
+      'xmlns' => "http://www.opengis.net/ows/1.1",
+      'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
+      'xsi:schemaLocation' => "http://www.opengis.net/ows/1.1 owsExceptionReport.xsd",
+      'version' => FARMOS_WFS_IMPLEMENTATION_VERSION,
+      'xml:lang' => "en",
+    ), $declarator));
+  });
 }

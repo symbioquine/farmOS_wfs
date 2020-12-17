@@ -10,7 +10,7 @@ function handle_wfs_get_capabilities_request($query_params) {
 
   $host = $base_url;
 
-  print farmos_wfs_makeDoc(function($doc, $elem) use ($host) {
+  return farmos_wfs_makeDoc(function($doc, $elem) use ($host) {
     $doc->appendChild($elem('wfs:WFS_Capabilities', array(
       "xmlns:farmos" => "https://farmos.org/wfs",
       'xmlns:gml' => "http://www.opengis.net/gml",
@@ -186,7 +186,5 @@ function handle_wfs_get_capabilities_request($query_params) {
       }));
 
     }));
-  })->saveXML();
-  drupal_exit();
-  return;
+  });
 }
