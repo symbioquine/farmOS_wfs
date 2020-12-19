@@ -159,7 +159,7 @@ function handle_wfs_transaction_update_action($transaction_action_elem, $transac
 
   $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
 
-  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter, $geo_type);
+  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter, [$geo_type]);
 
   $areas = entity_load('taxonomy_term', $area_ids);
 
@@ -192,11 +192,35 @@ function handle_wfs_transaction_update_action($transaction_action_elem, $transac
 }
 
 function handle_wfs_transaction_delete_action($transaction_action_elem, $transactionResults) {
-  
+  $type_name = $transaction_action_elem->getAttribute('typeName');
+
+  // TODO: Refactor this data into a common place
+  $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
+
+  if (!in_array($type_name, $known_type_names)) {
+    return farmos_wfs_makeExceptionReport(function($eReport, $elem) use ($type_name) {
+      $eReport->appendChild($elem('Exception', [],
+        $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));
+    });
+  }
+
+  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
+
+  $filter = $children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
+
+  $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
+
+  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter, [$geo_type]);
+
+  foreach ($area_ids as $area_id) {
+    taxonomy_term_delete($area_id);
+    $transactionResults->recordDeleteSuccess();
+  }
+
 }
 
 // @TODO: Move this out into farmos_wfs.module and use for GetFeature requests also
-function farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter_elem, $geo_type = null) {
+function farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter_elem, $geo_types = null) {
 
   // TODO: Validate that only supported filter criteria are being provided
 
@@ -219,8 +243,11 @@ function farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter_elem, $geo_type
 
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'taxonomy_term')
-    ->entityCondition('bundle', 'farm_areas')
-    ->fieldCondition('field_farm_geofield', 'geo_type', $geo_type, '=', 0);
+    ->entityCondition('bundle', 'farm_areas');
+
+  if (!empty($geo_types)) {
+    $query->fieldCondition('field_farm_geofield', 'geo_type', $geo_types, 'IN', 0);
+  }
 
   if (!empty($filter_ids)) {
     $query->propertyCondition('tid', $filter_ids, 'IN');
