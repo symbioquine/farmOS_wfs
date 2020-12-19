@@ -71,6 +71,8 @@ function handle_wfs_transaction_request($transaction_elem) {
 
       }));
 
+      // TODO: Add information about failed transaction actions
+
     }));
   });
 
@@ -86,7 +88,7 @@ function handle_wfs_transaction_insert_action($transaction_action_elem, $transac
     $known_unqualified_type_names = array('PointArea', 'PolygonArea', 'LineStringArea');
 
     if (!in_array($feature_type, $known_unqualified_type_names)) {
-      return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+      return farmos_wfs_makeExceptionReport(function($eReport, $elem) use ($feature_type) {
         $eReport->appendChild($elem('Exception', [],
           $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$feature_type'")));
       });
@@ -100,22 +102,7 @@ function handle_wfs_transaction_insert_action($transaction_action_elem, $transac
     $area = new stdClass();
     $area->vid = $vocab->vid;
 
-    $property_handlers = array(
-      'name' => function($e, $area) {
-        $area->name = check_plain($e->nodeValue);
-      },
-      'area_type' => function($e, $area) {
-        // TODO: Validate area type
-        $area->field_farm_area_type[LANGUAGE_NONE][0]['value'] = $e->nodeValue;
-      },
-      'description' => function($e, $area) {
-        $area->description = $e->nodeValue;
-      },
-      'geometry' => function($e, $area) {
-        // TODO: Validate that geometry type matches $feature_type
-      $area->field_farm_geofield[LANGUAGE_NONE][0]['geom'] = gml_three_point_one_point_one_to_geophp($e->firstChild);
-      },
-    );
+    $property_handlers = farmos_wfs_get_property_handlers();
 
     foreach ($feature_to_insert->childNodes as $feature_property_elem) {
 
@@ -134,12 +121,118 @@ function handle_wfs_transaction_insert_action($transaction_action_elem, $transac
   }
 }
 
+function farmos_wfs_get_property_handlers() {
+  return array(
+    'name' => function($e, $area) {
+      $area->name = check_plain($e->nodeValue);
+    },
+    'area_type' => function($e, $area) {
+      // TODO: Validate area type
+      $area->field_farm_area_type[LANGUAGE_NONE][0]['value'] = $e->nodeValue;
+    },
+    'description' => function($e, $area) {
+      $area->description = $e->nodeValue;
+    },
+    'geometry' => function($e, $area) {
+      // TODO: Validate that geometry type matches $feature_type
+      $area->field_farm_geofield[LANGUAGE_NONE][0]['geom'] = gml_three_point_one_point_one_to_geophp($e->firstChild);
+    },
+  );
+}
+
 function handle_wfs_transaction_update_action($transaction_action_elem, $transactionResults) {
-  
+  $type_name = $transaction_action_elem->getAttribute('typeName');
+
+  // TODO: Refactor this data into a common place
+  $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
+
+  if (!in_array($type_name, $known_type_names)) {
+    return farmos_wfs_makeExceptionReport(function($eReport, $elem) use ($type_name) {
+      $eReport->appendChild($elem('Exception', [],
+        $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));
+    });
+  }
+
+  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
+
+  $filter = $children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
+
+  $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
+
+  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter, $geo_type);
+
+  $areas = entity_load('taxonomy_term', $area_ids);
+
+  $property_handlers = farmos_wfs_get_property_handlers();
+
+  $properties = $children_with_tag($transaction_action_elem, 'Property');
+
+  foreach ($areas as $area) {
+    foreach ($properties as $property_elem) {
+
+      $name_elem = $children_with_tag($property_elem, 'Name')[0] ?? null;
+      $value_elem = $children_with_tag($property_elem, 'Value')[0] ?? null;
+
+      $name = preg_replace('/^farmos:/', '', $name_elem->nodeValue);
+
+      $property_handler = $property_handlers[$name] ?? null;
+
+      if ($property_handler) {
+        $property_handler($value_elem, $area);
+      }
+
+    }
+
+    taxonomy_term_save($area);
+
+    $transactionResults->recordUpdateSuccess();
+
+  }
+
 }
 
 function handle_wfs_transaction_delete_action($transaction_action_elem, $transactionResults) {
   
+}
+
+// @TODO: Move this out into farmos_wfs.module and use for GetFeature requests also
+function farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter_elem, $geo_type = null) {
+
+  // TODO: Validate that only supported filter criteria are being provided
+
+  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
+
+  $filter_raw_ids = array_merge(
+    array_map(function ($e) { return $e->getAttribute('fid'); }, $children_with_tag($filter_elem, 'FeatureId')),
+    array_map(function ($e) { return $e->getAttribute('id'); }, $children_with_tag($filter_elem, 'GmlObjectId')),
+  );
+
+  $filter_ids = array_map(function($raw_id) {
+    return preg_replace('/^[^.]+\.(\d+)$/', '$1', $raw_id);
+  }, $filter_raw_ids);
+
+  // Bail if the update filter has no criteria - i.e. don't support vacuously matching all features
+  // TODO: Also check other filter criteria once those are supported
+  if (empty($filter_ids)) {
+    return [];
+  }
+
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'taxonomy_term')
+    ->entityCondition('bundle', 'farm_areas')
+    ->fieldCondition('field_farm_geofield', 'geo_type', $geo_type, '=', 0);
+
+  if (!empty($filter_ids)) {
+    $query->propertyCondition('tid', $filter_ids, 'IN');
+  }
+
+  $result = $query->execute();
+
+  if (isset($result['taxonomy_term'])) {
+    return array_keys($result['taxonomy_term']);
+  }
+
+  return [];
 }
 
 class TransactionResults {
@@ -227,4 +320,14 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
     default:
       throw new Exception("Unsupported geometry type: {$geometry_elem->localName}");
   }
+}
+
+function farmos_wfs_get_xnode_children_with_tag($node, $tag) {
+  return farmos_wfs_filter_xnodes_by_local_name(iterator_to_array($node->childNodes), $tag);
+}
+
+function farmos_wfs_filter_xnodes_by_local_name($nodes, $localName) {
+  return array_values(array_filter($nodes, function($n) use ($localName) {
+    return $n->localName == $localName;
+  }));
 }

@@ -187,6 +187,7 @@ function gml_bounded_by($limits, $elem) {
 }
 
 function geophp_to_gml_three_point_one_point_one(Geometry $geometry, $elem) {
+  // TODO: Consider refactoring to reduce duplication in these cases
   switch ($geometry->geometryType()) {
     case 'Point':
 
