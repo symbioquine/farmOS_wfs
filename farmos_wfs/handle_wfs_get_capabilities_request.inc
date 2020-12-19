@@ -53,21 +53,31 @@ function handle_wfs_get_capabilities_request($query_params) {
       $wfsCapabilities->appendChild($elem('ows:OperationsMetadata', [],
         function($operationsMetadata, $elem) use ($host) {
 
-          foreach(["GetCapabilities", "DescribeFeatureType", "GetFeature"] as $operationName) {
+          foreach(["GetCapabilities", "DescribeFeatureType", "GetFeature", "Transaction"] as $operationName) {
 
             $operationsMetadata->appendChild($elem('ows:Operation', array(
               'name' => $operationName,
               ), function($operation, $elem) use ($operationName, $host) {
 
               $operation->appendChild($elem('ows:DCP', [],
-                function($dcp, $elem) use ($host) {
+                function($dcp, $elem) use ($operationName, $host) {
 
                   $dcp->appendChild($elem('ows:HTTP', array(),
-                    function($http, $elem) use ($host) {
+                    function($http, $elem) use ($operationName, $host) {
 
-                      $http->appendChild($elem('ows:Get', array(
-                        "xlink:href"  => "$host/wfs",
-                      )));
+                      if ($operationName == 'Transaction') {
+
+                        $http->appendChild($elem('ows:Post', array(
+                          "xlink:href"  => "$host/wfs",
+                        )));
+
+                      } else {
+
+                        $http->appendChild($elem('ows:Get', array(
+                          "xlink:href"  => "$host/wfs",
+                        )));
+
+                      }
 
                   }));
 
@@ -87,10 +97,22 @@ function handle_wfs_get_capabilities_request($query_params) {
                   $param->appendChild($elem('ows:Value', [], "text/xml"));
                 }));
 
-              } else {
+              }
+
+              if ($operationName == 'DescribeFeatureType' || $operationName == 'GetFeature') {
 
                 $operation->appendChild($elem('ows:Parameter', array(
                   'name' => "outputFormat",
+                ), function($param, $elem) {
+                  $param->appendChild($elem('ows:Value', [], "text/xml; subtype=gml/3.1.1"));
+                }));
+
+              }
+
+              if ($operationName == 'Transaction') {
+
+                $operation->appendChild($elem('ows:Parameter', array(
+                  'name' => "inputFormat",
                 ), function($param, $elem) {
                   $param->appendChild($elem('ows:Value', [], "text/xml; subtype=gml/3.1.1"));
                 }));
