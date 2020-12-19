@@ -109,6 +109,13 @@ function handle_wfs_get_capabilities_request($query_params) {
           $featureTypeList->appendChild($elem('wfs:Operations', [],
             function($operations, $elem) {
               $operations->appendChild($elem('wfs:Operation', [], "Query"));
+
+              if (user_access('administer taxonomy')) {
+                $operations->appendChild($elem('wfs:Operation', [], "Insert"));
+                $operations->appendChild($elem('wfs:Operation', [], "Update"));
+                $operations->appendChild($elem('wfs:Operation', [], "Delete"));
+              }
+
           }));
 
           $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');

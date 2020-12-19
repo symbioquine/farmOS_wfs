@@ -72,7 +72,7 @@ function farmos_wfs_makeDoc($declarator) {
       $e->setAttribute($attrKey, $attrVal);
     }
 
-    if ($elemContent) {
+    if (isset($elemContent)) {
       if (is_callable($elemContent)) {
         $elemContent($e, $elem);
       } elseif ($elemContent instanceof DOMNode) {
