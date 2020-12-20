@@ -8,9 +8,7 @@
 function handle_wfs_describe_feature_type_request($query_params) {
   $requested_type_names = array_filter(explode(',', $query_params['TYPENAME'] ?? ''));
 
-  $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
-
-  $unknown_type_names = array_diff_key($requested_type_names, $known_type_names);
+  $unknown_type_names = array_diff_key($requested_type_names, FARMOS_WFS_QUALIFIED_TYPE_NAMES);
 
   if (!empty($unknown_type_names)) {
     return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
@@ -22,7 +20,7 @@ function handle_wfs_describe_feature_type_request($query_params) {
   }
 
   if (empty($requested_type_names)) {
-    $requested_type_names = $known_type_names;
+    $requested_type_names = FARMOS_WFS_QUALIFIED_TYPE_NAMES;
   }
 
   return farmos_wfs_makeDoc(function($doc, $elem) use ($requested_type_names) {

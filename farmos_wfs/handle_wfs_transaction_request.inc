@@ -85,9 +85,7 @@ function handle_wfs_transaction_insert_action($transaction_action_elem, $transac
 
     $feature_type = $feature_to_insert->localName;
 
-    $known_unqualified_type_names = array('PointArea', 'PolygonArea', 'LineStringArea');
-
-    if (!in_array($feature_type, $known_unqualified_type_names)) {
+    if (!in_array($feature_type, FARMOS_WFS_UNQUALIFIED_TYPE_NAMES)) {
       return farmos_wfs_makeExceptionReport(function($eReport, $elem) use ($feature_type) {
         $eReport->appendChild($elem('Exception', [],
           $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$feature_type'")));
@@ -143,10 +141,7 @@ function farmos_wfs_get_property_handlers() {
 function handle_wfs_transaction_update_action($transaction_action_elem, $transactionResults) {
   $type_name = $transaction_action_elem->getAttribute('typeName');
 
-  // TODO: Refactor this data into a common place
-  $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
-
-  if (!in_array($type_name, $known_type_names)) {
+  if (!in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
     return farmos_wfs_makeExceptionReport(function($eReport, $elem) use ($type_name) {
       $eReport->appendChild($elem('Exception', [],
         $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));
@@ -194,10 +189,7 @@ function handle_wfs_transaction_update_action($transaction_action_elem, $transac
 function handle_wfs_transaction_delete_action($transaction_action_elem, $transactionResults) {
   $type_name = $transaction_action_elem->getAttribute('typeName');
 
-  // TODO: Refactor this data into a common place
-  $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
-
-  if (!in_array($type_name, $known_type_names)) {
+  if (!in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
     return farmos_wfs_makeExceptionReport(function($eReport, $elem) use ($type_name) {
       $eReport->appendChild($elem('Exception', [],
         $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));

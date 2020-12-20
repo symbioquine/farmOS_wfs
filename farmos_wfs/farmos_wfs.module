@@ -7,6 +7,8 @@
 
 define("FARMOS_WFS_IMPLEMENTATION_VERSION", '1.1.0');
 define("FARMOS_WFS_DEFAULT_CRS", 'EPSG:4326');
+define("FARMOS_WFS_QUALIFIED_TYPE_NAMES", ['farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea']);
+define("FARMOS_WFS_UNQUALIFIED_TYPE_NAMES", ['PointArea', 'PolygonArea', 'LineStringArea']);
 
 /**
  * Implements hook_menu().

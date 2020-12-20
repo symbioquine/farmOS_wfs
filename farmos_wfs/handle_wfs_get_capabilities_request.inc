@@ -140,9 +140,7 @@ function handle_wfs_get_capabilities_request($query_params) {
 
           }));
 
-          $known_type_names = array('farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea');
-
-          foreach($known_type_names as $type_name) {
+          foreach(FARMOS_WFS_QUALIFIED_TYPE_NAMES as $type_name) {
 
             $featureTypeList->appendChild($elem('wfs:FeatureType', [],
               function($featureType, $elem) use ($type_name) {
