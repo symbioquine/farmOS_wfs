@@ -71,7 +71,7 @@ function handle_wfs_get_feature_request($query_params) {
 
     // $doc->validate();
 
-    if (!$filter_doc->firstChild || $filter_doc->firstChild->nodeName != "Filter") {
+    if (!$filter_doc->documentElement || $filter_doc->documentElement->localName != "Filter") {
 
       return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
         $eReport->appendChild($elem('Exception', [],
@@ -80,7 +80,7 @@ function handle_wfs_get_feature_request($query_params) {
 
     }
 
-    $filter_elem = $filter_doc->firstChild;
+    $filter_elem = $filter_doc->documentElement;
   }
 
   if (!empty($bbox) && $filter_elem) {

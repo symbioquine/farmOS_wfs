@@ -117,7 +117,11 @@ function farmos_wfs_ogc_filter_one_point_one_to_area_ids($geo_types, $filter_ele
 
   $filter_ids = [];
   if ($filter_elem) {
-    $distinct_child_names = array_unique(array_map(function($e) { return $e->localName; }, iterator_to_array($filter_elem->childNodes)));
+    $nontext_filter_children = array_values(array_filter(iterator_to_array($filter_elem->childNodes), function($e) {
+      return !($e instanceof DomText && $e->isWhitespaceInElementContent());
+    }));
+
+    $distinct_child_names = array_unique(array_map(function($e) { return $e->localName; }, $nontext_filter_children));
 
     if (empty($distinct_child_names)) {
       throw new Exception("Illegal filter expression. Cannot be empty.");
@@ -142,7 +146,7 @@ function farmos_wfs_ogc_filter_one_point_one_to_area_ids($geo_types, $filter_ele
       }, $filter_raw_ids);
 
     } else {
-      throw new Exception("Unsupported filter operation: {$distinct_child_names[0]}");
+      throw new Exception("Unsupported filter operation: '{$distinct_child_names[0]}'");
     }
 
   }
