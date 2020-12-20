@@ -16,6 +16,31 @@ services:
     depends_on:
       - db
     image: farmos/farmos:dev
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e
+
+        wait_db_ready() {
+            while { ! exec 3<>/dev/tcp/db/3306; } > /dev/null 2>&1; do sleep 0.1; done
+        }
+
+        if ! [ "$$(ls -A /var/www/html/)" ]; then
+          echo "farmOS webroot not detected. Copying from pre-built codebase in the Docker image."
+          cp -rp /tmp/www/. /var/www/html
+          wait_db_ready
+          drush site-install farm --debug --yes --locale=us --db-url=mysql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test install_configure_form.update_status_module='array(FALSE,FALSE)'
+        fi
+
+        wait_db_ready
+
+        find /farmos_dev_modules -maxdepth 1 -mindepth 1 -execdir sh -c '\
+            echo Symlinking and drush enabling $$(basename {}) && \
+            ln -sTf /farmos_dev_modules/$$(basename {}) /var/www/html/sites/all/modules/$$(basename {}) && \
+            drush --root=/var/www/html pm-enable --yes $$(basename {})' \;
+
+        exec docker-entrypoint.sh apache2-foreground
     volumes:
       - './www:/var/www/html'
       - './php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini'
@@ -23,6 +48,4 @@ services:
     ports:
       - '80:80'
     environment:
-      XDEBUG_CONFIG: remote_host=172.17.0.1
-      FARMOS_INSTALL_CMD: while { ! exec 3<>/dev/tcp/db/3306; } > /dev/null 2>&1; do sleep 0.1; done && drush site-install farm --debug --yes --locale=us --db-url=mysql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test install_configure_form.update_status_module='array(FALSE,FALSE)'
-      FARMOS_DEV_MODULES_DIRECTORY: /farmos_dev_modules
+      XDEBUG_CONFIG: remote_host=172.22.0.1
