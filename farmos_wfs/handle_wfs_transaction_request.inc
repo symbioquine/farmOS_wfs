@@ -159,7 +159,7 @@ function handle_wfs_transaction_update_action($transaction_action_elem, $transac
 
   $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
 
-  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter, [$geo_type]);
+  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids([$geo_type], $filter);
 
   $areas = entity_load('taxonomy_term', $area_ids);
 
@@ -204,62 +204,17 @@ function handle_wfs_transaction_delete_action($transaction_action_elem, $transac
     });
   }
 
-  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
-
-  $filter = $children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
+  $filter_elem = farmos_wfs_get_xnode_children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
 
   $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
 
-  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter, [$geo_type]);
+  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids([$geo_type], $filter_elem);
 
   foreach ($area_ids as $area_id) {
     taxonomy_term_delete($area_id);
     $transactionResults->recordDeleteSuccess();
   }
 
-}
-
-// @TODO: Move this out into farmos_wfs.module and use for GetFeature requests also
-function farmos_wfs_ogc_filter_one_point_one_to_area_ids($filter_elem, $geo_types = null) {
-
-  // TODO: Validate that only supported filter criteria are being provided
-
-  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
-
-  $filter_raw_ids = array_merge(
-    array_map(function ($e) { return $e->getAttribute('fid'); }, $children_with_tag($filter_elem, 'FeatureId')),
-    array_map(function ($e) { return $e->getAttribute('id'); }, $children_with_tag($filter_elem, 'GmlObjectId')),
-  );
-
-  $filter_ids = array_map(function($raw_id) {
-    return preg_replace('/^[^.]+\.(\d+)$/', '$1', $raw_id);
-  }, $filter_raw_ids);
-
-  // Bail if the update filter has no criteria - i.e. don't support vacuously matching all features
-  // TODO: Also check other filter criteria once those are supported
-  if (empty($filter_ids)) {
-    return [];
-  }
-
-  $query = new EntityFieldQuery();
-  $query->entityCondition('entity_type', 'taxonomy_term')
-    ->entityCondition('bundle', 'farm_areas');
-
-  if (!empty($geo_types)) {
-    $query->fieldCondition('field_farm_geofield', 'geo_type', $geo_types, 'IN', 0);
-  }
-
-  if (!empty($filter_ids)) {
-    $query->propertyCondition('tid', $filter_ids, 'IN');
-  }
-
-  $result = $query->execute();
-
-  if (isset($result['taxonomy_term'])) {
-    return array_keys($result['taxonomy_term']);
-  }
-
-  return [];
 }
 
 class TransactionResults {
@@ -347,14 +302,4 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
     default:
       throw new Exception("Unsupported geometry type: {$geometry_elem->localName}");
   }
-}
-
-function farmos_wfs_get_xnode_children_with_tag($node, $tag) {
-  return farmos_wfs_filter_xnodes_by_local_name(iterator_to_array($node->childNodes), $tag);
-}
-
-function farmos_wfs_filter_xnodes_by_local_name($nodes, $localName) {
-  return array_values(array_filter($nodes, function($n) use ($localName) {
-    return $n->localName == $localName;
-  }));
 }

@@ -41,7 +41,7 @@ function handle_wfs_request() {
   if ($requested_operation_handler) {
     if ($request_method != "GET") {
 
-      return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+      return farmos_wfs_makeExceptionReport(function($eReport, $elem) use ($requested_operation, $request_method) {
         $eReport->appendChild($elem('Exception', array(
           "exceptionCode"  => "InvalidParameterValue",
           "locator" => "request",

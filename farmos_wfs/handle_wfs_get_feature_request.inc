@@ -64,26 +64,39 @@ function handle_wfs_get_feature_request($query_params) {
     });
   }
 
-  $query = new EntityFieldQuery();
-  $query->entityCondition('entity_type', 'taxonomy_term')
-    ->entityCondition('bundle', 'farm_areas')
-    ->fieldCondition('field_farm_geofield', 'geo_type', $requested_geometry_types, 'IN', 0);
+  $filter = $query_params['FILTER'] ?? null;
 
-  // TODO: Consider handling features and/or bounding boxes which cross the anti-meridian
-  if (!empty($bbox)) {
-    $query->fieldCondition('field_farm_geofield', 'top', $bbox[0], '>=', 0);
-    $query->fieldCondition('field_farm_geofield', 'right', $bbox[1], '>=', 0);
-    $query->fieldCondition('field_farm_geofield', 'bottom', $bbox[2], '<=', 0);
-    $query->fieldCondition('field_farm_geofield', 'left', $bbox[3], '<=', 0);
+  $filter_elem = null;
+  if ($filter) {
+    // TODO: error handling
+    $filter_doc = farmos_wfs_loadXml($filter);
+
+    // $doc->validate();
+
+    if (!$filter_doc->firstChild || $filter_doc->firstChild->nodeName != "Filter") {
+
+      return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+        $eReport->appendChild($elem('Exception', [],
+          $elem('ExceptionText', [], "Could not understand filter parameter: root element must be a Filter")));
+      });
+
+    }
+
+    $filter_elem = $filter_doc->firstChild;
   }
 
-  $result = $query->execute();
-  if (isset($result['taxonomy_term'])) {
-    $area_ids = array_keys($result['taxonomy_term']);
-    $areas = entity_load('taxonomy_term', $area_ids);
-  } else {
-    $areas = array();
+  if (!empty($bbox) && $filter_elem) {
+    return farmos_wfs_makeExceptionReport(function($eReport, $elem) {
+      $eReport->appendChild($elem('Exception', array(
+        "exceptionCode"  => "InvalidParameterValue",
+        "locator" => "filter",
+      ), $elem('ExceptionText', [], "Illegal request; please supply only one of the 'filter' or 'bbox' parameters")));
+    });
   }
+
+  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($requested_geometry_types, $filter_elem, $bbox, FARMOS_WFS_EMPTY_FILTER_BEHAVIOR_MATCH_ALL);
+
+  $areas = entity_load('taxonomy_term', $area_ids);
 
   return farmos_wfs_makeDoc(function($doc, $elem) use ($host, $query_params, $requested_type_names, $areas, $requested_type_names_by_geofield_geo_type) {
     $doc->appendChild($elem('wfs:FeatureCollection', array(
