@@ -19,8 +19,6 @@ function handle_wfs_transaction_request($transaction_elem) {
 
   foreach ($transaction_elem->childNodes as $transaction_action_elem) {
 
-    drupal_debug($transaction_action_elem->nodeName);
-
     $action_handler = $action_handlers[$transaction_action_elem->nodeName] ?? null;
 
     if (!$action_handler) {

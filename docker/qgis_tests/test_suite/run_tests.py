@@ -9,7 +9,7 @@ import requests
 from oauthlib.oauth2 import LegacyApplicationClient
 from owslib.util import Authentication
 from owslib.wfs import WebFeatureService
-from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer
+from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer, QgsFeature, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, edit
 from requests_oauthlib import OAuth2Session, OAuth2
 
 
@@ -139,6 +139,47 @@ class TestTest(unittest.TestCase):
         self.assertEqual(colorado_feature.attribute('area_type'), "property")
         self.assertEqual(colorado_feature.geometry().asJson(), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
 
+    def test_qgis_create_point_feature(self):
+        vlayer = QgsVectorLayer(
+            WFS_ENDPOINT + "?typename=farmos:PointArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Point Areas", "WFS")
+
+        with edit(vlayer):
+            f = QgsFeature(vlayer.fields())
+            f.setAttribute("name", "Example point attribute")
+            f.setAttribute("area_type", "building")
+            f.setAttribute(
+                "description", "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
+            f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10, 10)))
+
+            vlayer.addFeature(f)
+
+        vlayer.reload()
+
+        features = list(vlayer.getFeatures())
+
+        created_feature = next(iter(filter(
+            lambda f: 'Description for point created via WFS from QGIS' in f.attribute('description'), features)))
+
+        created_area_id = created_feature.attribute('area_id')
+
+        self.assertIsInstance(created_area_id, str)
+        self.assertTrue(created_area_id.isnumeric(), "created_area_id.isnumeric()")
+
+        with requests.Session() as s:
+            s.auth=self.requests_oauth2
+
+            area_response = s.get("http://www/taxonomy_term/{}.json".format(created_area_id))
+
+        self.assertTrue(area_response.ok)
+
+        area = area_response.json()
+
+        self.assertEqual(area['name'], "Example point attribute")
+        self.assertEqual(area['area_type'], "building")
+        # The Drupal entity API adds some markup around our description so just assert that the description is a substring of it
+        self.assertIn("Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
+        self.assertEqual(area['geofield'][0]['geom'], 'POINT (10 10)')
+
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
 
@@ -248,6 +289,5 @@ class TestTest(unittest.TestCase):
 
 def run_all():
     """Default function that is called by the runner if nothing else is specified"""
-    suite = unittest.TestSuite()
-    suite.addTests(unittest.makeSuite(TestTest, 'test'))
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestTest)
     unittest.TextTestRunner(verbosity=3, stream=sys.stdout).run(suite)
