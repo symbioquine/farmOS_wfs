@@ -40,7 +40,7 @@ services:
             ln -sTf /farmos_dev_modules/$$(basename {}) /var/www/html/sites/all/modules/$$(basename {}) && \
             drush --root=/var/www/html pm-enable --yes $$(basename {})' \;
 
-        echo "ready" > /opt/drupal/www-container-fs-ready
+        echo "ready" > /var/www/html/www-container-fs-ready
 
         exec docker-entrypoint.sh apache2-foreground
     volumes:
