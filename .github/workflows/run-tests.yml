@@ -19,4 +19,4 @@ jobs:
       - name: Wait until www container is ready
         run: until [ -f ./docker/www/www-container-fs-ready ]; do sleep 0.1; done
       - name: Run QGIS tests
-        run: docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/docker/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests
+        run: docker run --rm --name qgis --network=docker_default -v $(pwd)'/docker/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests
