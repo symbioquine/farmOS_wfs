@@ -234,6 +234,47 @@ class TestTest(unittest.TestCase):
         self.assertEqual(area['geofield'][0]['geom'],
                          "POLYGON ((-104.0556 41.0037, -104.0584 44.9949, -111.0539 44.9998, -111.0457 40.9986, -104.0556 41.0006, -104.0556 41.0037))")
 
+    def test_qgis_update_point_feature(self):
+        south_field_id = self.create_area_entity({
+            "vocabulary": "3",
+            "name": "South field",
+            "description": "Sample south field description... [created by farmOS_wfs-qgis_tests]",
+            "area_type": "field",
+            "geofield": [
+                    {
+                        "geom": "POINT(-98.27361139210143 28.614320347429143)",
+                    },
+            ],
+        })
+
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
+
+        features = list(vlayer.getFeatures())
+
+        south_field_feature = next(
+            iter(filter(lambda f: f.attribute('area_id') == south_field_id, features)))
+
+        with edit(vlayer):
+            south_field_feature.setAttribute("name", "South field (updated)")
+            south_field_feature.setAttribute("area_type", "paddock")
+            south_field_feature.setAttribute(
+                "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]")
+            south_field_feature.setGeometry(QgsGeometry.fromWkt(
+                "POINT(-95.32595536400291 29.29726983388369)"))
+
+            vlayer.updateFeature(south_field_feature)
+
+        area = self.get_area_entity_by_id(south_field_id)
+
+        self.assertEqual(area['name'], "South field (updated)")
+        self.assertEqual(area['area_type'], "paddock")
+        # The Drupal entity API adds some markup around our description so just
+        # assert that the description is a substring of it
+        self.assertIn(
+            "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]", area['description'])
+        self.assertEqual(area['geofield'][0]['geom'],
+                         'POINT (-95.32595536400299 29.297269833884)')
+
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
 
