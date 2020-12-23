@@ -142,7 +142,7 @@ class TestTest(unittest.TestCase):
 
         with edit(vlayer):
             f = QgsFeature(vlayer.fields())
-            f.setAttribute("name", "Example point attribute")
+            f.setAttribute("name", "Example point")
             f.setAttribute("area_type", "building")
             f.setAttribute(
                 "description", "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
@@ -159,23 +159,81 @@ class TestTest(unittest.TestCase):
 
         created_area_id = created_feature.attribute('area_id')
 
-        self.assertIsInstance(created_area_id, str)
-        self.assertTrue(created_area_id.isnumeric(), "created_area_id.isnumeric()")
+        area = self.get_area_entity_by_id(created_area_id)
 
-        with requests.Session() as s:
-            s.auth=self.requests_oauth2
-
-            area_response = s.get("http://www/taxonomy_term/{}.json".format(created_area_id))
-
-        self.assertTrue(area_response.ok)
-
-        area = area_response.json()
-
-        self.assertEqual(area['name'], "Example point attribute")
+        self.assertEqual(area['name'], "Example point")
         self.assertEqual(area['area_type'], "building")
         # The Drupal entity API adds some markup around our description so just assert that the description is a substring of it
         self.assertIn("Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
         self.assertEqual(area['geofield'][0]['geom'], 'POINT (10 10)')
+
+    def test_qgis_create_line_string_feature(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
+
+        with edit(vlayer):
+            f = QgsFeature(vlayer.fields())
+            f.setAttribute("name", "Example line string")
+            f.setAttribute("area_type", "water")
+            f.setAttribute(
+                "description", "Description for line string created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
+            f.setGeometry(QgsGeometry.fromWkt("LINESTRING(-124.81957346280673 48.41387902376911,-123.93862573833353 45.842330434997535,"
+                                              "-124.34239344538385 40.38160427010013,-120.56165946118642 34.59083932797574,"
+                                              "-118.06564090851239 33.679388968040115,-117.25810549441198 32.60369705122281)"))
+
+            vlayer.addFeature(f)
+
+        vlayer.reload()
+
+        features = list(vlayer.getFeatures())
+
+        created_feature = next(iter(filter(
+            lambda f: 'Description for line string created via WFS from QGIS' in f.attribute('description'), features)))
+
+        created_area_id = created_feature.attribute('area_id')
+
+        area = self.get_area_entity_by_id(created_area_id)
+
+        self.assertEqual(area['name'], "Example line string")
+        self.assertEqual(area['area_type'], "water")
+        # The Drupal entity API adds some markup around our description so just
+        # assert that the description is a substring of it
+        self.assertIn(
+            "Description for line string created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
+        self.assertEqual(area['geofield'][0]['geom'], "LINESTRING (-124.81957346281 48.413879023769, -123.93862573833 45.842330434998, "
+                         "-124.34239344538 40.3816042701, -120.56165946119 34.590839327976, "
+                         "-118.06564090851 33.67938896804, -117.25810549441 32.603697051223)")
+
+    def test_qgis_create_polygon_feature(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
+
+        with edit(vlayer):
+            f = QgsFeature(vlayer.fields())
+            f.setAttribute("name", "Example polygon")
+            f.setAttribute("area_type", "other")
+            f.setAttribute(
+                "description", "Description for polygon created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
+            f.setGeometry(QgsGeometry.fromWkt("POLYGON((-104.0556 41.0037,-104.0584 44.9949,-111.0539 44.9998,-111.0457 40.9986,-104.0556 41.0006,-104.0556 41.0037))"))
+
+            vlayer.addFeature(f)
+
+        vlayer.reload()
+
+        features = list(vlayer.getFeatures())
+
+        created_feature = next(iter(filter(
+            lambda f: 'Description for polygon created via WFS from QGIS' in f.attribute('description'), features)))
+
+        created_area_id = created_feature.attribute('area_id')
+
+        area = self.get_area_entity_by_id(created_area_id)
+
+        self.assertEqual(area['name'], "Example polygon")
+        self.assertEqual(area['area_type'], "other")
+        # The Drupal entity API adds some markup around our description so just
+        # assert that the description is a substring of it
+        self.assertIn(
+            "Description for polygon created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
+        self.assertEqual(area['geofield'][0]['geom'], "POLYGON ((-104.0556 41.0037, -104.0584 44.9949, -111.0539 44.9998, -111.0457 40.9986, -104.0556 41.0006, -104.0556 41.0037))")
 
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
@@ -244,6 +302,21 @@ class TestTest(unittest.TestCase):
                 typename=type_name,
                 authcfg=self.cfg.id(),
             ), safe=':'), type_name, "WFS")
+
+    def get_area_entity_by_id(self, area_id):
+        self.assertIsInstance(area_id, str)
+        self.assertTrue(area_id.isnumeric(),
+                        "area_id.isnumeric()")
+
+        with requests.Session() as s:
+            s.auth = self.requests_oauth2
+
+            area_response = s.get(
+                "http://www/taxonomy_term/{}.json".format(area_id))
+
+        self.assertTrue(area_response.ok)
+
+        return area_response.json()
 
     @classmethod
     def setup_requests_oauth(cls):
