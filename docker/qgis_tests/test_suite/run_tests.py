@@ -35,15 +35,17 @@ class TestTest(unittest.TestCase):
         cls.setup_owslib()
 
         with requests.Session() as s:
-            s.auth=cls.requests_oauth2
+            s.auth = cls.requests_oauth2
 
-            farm_areas = s.get("http://www/taxonomy_term.json?bundle=farm_areas").json()
+            farm_areas = s.get(
+                "http://www/taxonomy_term.json?bundle=farm_areas").json()
 
             for area in farm_areas['list']:
                 if not '[created by farmOS_wfs-qgis_tests]' in area['description']:
                     continue
 
-                delete_response = s.delete('http://www/taxonomy_term/' + area['tid'])
+                delete_response = s.delete(
+                    'http://www/taxonomy_term/' + area['tid'])
 
                 cls.assertTrue(None, delete_response.ok)
 
@@ -77,7 +79,8 @@ class TestTest(unittest.TestCase):
 
             cls.assertTrue(None, forty_ninth_parallel_create_response.ok)
 
-            cls.forty_ninth_parallel_id = forty_ninth_parallel_create_response.json()['id']
+            cls.forty_ninth_parallel_id = forty_ninth_parallel_create_response.json()[
+                'id']
 
             colorado_create_response = s.post('http://www/taxonomy_term', json={
                 "vocabulary": "3",
@@ -102,12 +105,15 @@ class TestTest(unittest.TestCase):
 
         features = list(vlayer.getFeatures())
 
-        north_field_feature = next(iter(filter(lambda f: f.attribute('area_id') == self.north_field_id, features)))
+        north_field_feature = next(
+            iter(filter(lambda f: f.attribute('area_id') == self.north_field_id, features)))
 
         self.assertEqual(north_field_feature.attribute('name'), "North field")
-        self.assertEqual(north_field_feature.attribute('description'), "Sample description... [created by farmOS_wfs-qgis_tests]")
+        self.assertEqual(north_field_feature.attribute(
+            'description'), "Sample description... [created by farmOS_wfs-qgis_tests]")
         self.assertEqual(north_field_feature.attribute('area_type'), "field")
-        self.assertEqual(north_field_feature.geometry().asJson(), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
+        self.assertEqual(north_field_feature.geometry().asJson(
+        ), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
 
     def test_qgis_get_line_string_features(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
@@ -116,12 +122,17 @@ class TestTest(unittest.TestCase):
 
         features = list(vlayer.getFeatures())
 
-        forty_ninth_parallel_feature = next(iter(filter(lambda f: f.attribute('area_id') == self.forty_ninth_parallel_id, features)))
+        forty_ninth_parallel_feature = next(iter(filter(lambda f: f.attribute(
+            'area_id') == self.forty_ninth_parallel_id, features)))
 
-        self.assertEqual(forty_ninth_parallel_feature.attribute('name'), "49th Parallel")
-        self.assertEqual(forty_ninth_parallel_feature.attribute('description'), "Another sample description... [created by farmOS_wfs-qgis_tests]")
-        self.assertEqual(forty_ninth_parallel_feature.attribute('area_type'), "landmark")
-        self.assertEqual(forty_ninth_parallel_feature.geometry().asJson(), '{"coordinates":[[-125.75,49.0],[-53.833333,49.0]],"type":"LineString"}')
+        self.assertEqual(forty_ninth_parallel_feature.attribute(
+            'name'), "49th Parallel")
+        self.assertEqual(forty_ninth_parallel_feature.attribute(
+            'description'), "Another sample description... [created by farmOS_wfs-qgis_tests]")
+        self.assertEqual(forty_ninth_parallel_feature.attribute(
+            'area_type'), "landmark")
+        self.assertEqual(forty_ninth_parallel_feature.geometry().asJson(
+        ), '{"coordinates":[[-125.75,49.0],[-53.833333,49.0]],"type":"LineString"}')
 
     def test_qgis_get_polygon_features(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
@@ -130,12 +141,15 @@ class TestTest(unittest.TestCase):
 
         features = list(vlayer.getFeatures())
 
-        colorado_feature = next(iter(filter(lambda f: f.attribute('area_id') == self.colorado_id, features)))
+        colorado_feature = next(
+            iter(filter(lambda f: f.attribute('area_id') == self.colorado_id, features)))
 
         self.assertEqual(colorado_feature.attribute('name'), "Colorado")
-        self.assertEqual(colorado_feature.attribute('description'), "Yet another sample description... [created by farmOS_wfs-qgis_tests]")
+        self.assertEqual(colorado_feature.attribute(
+            'description'), "Yet another sample description... [created by farmOS_wfs-qgis_tests]")
         self.assertEqual(colorado_feature.attribute('area_type'), "property")
-        self.assertEqual(colorado_feature.geometry().asJson(), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
+        self.assertEqual(colorado_feature.geometry().asJson(
+        ), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
 
     def test_qgis_create_point_feature(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
@@ -163,8 +177,10 @@ class TestTest(unittest.TestCase):
 
         self.assertEqual(area['name'], "Example point")
         self.assertEqual(area['area_type'], "building")
-        # The Drupal entity API adds some markup around our description so just assert that the description is a substring of it
-        self.assertIn("Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
+        # The Drupal entity API adds some markup around our description so just
+        # assert that the description is a substring of it
+        self.assertIn(
+            "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
         self.assertEqual(area['geofield'][0]['geom'], 'POINT (10 10)')
 
     def test_qgis_create_line_string_feature(self):
@@ -212,7 +228,8 @@ class TestTest(unittest.TestCase):
             f.setAttribute("area_type", "other")
             f.setAttribute(
                 "description", "Description for polygon created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
-            f.setGeometry(QgsGeometry.fromWkt("POLYGON((-104.0556 41.0037,-104.0584 44.9949,-111.0539 44.9998,-111.0457 40.9986,-104.0556 41.0006,-104.0556 41.0037))"))
+            f.setGeometry(QgsGeometry.fromWkt(
+                "POLYGON((-104.0556 41.0037,-104.0584 44.9949,-111.0539 44.9998,-111.0457 40.9986,-104.0556 41.0006,-104.0556 41.0037))"))
 
             vlayer.addFeature(f)
 
@@ -233,7 +250,8 @@ class TestTest(unittest.TestCase):
         # assert that the description is a substring of it
         self.assertIn(
             "Description for polygon created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
-        self.assertEqual(area['geofield'][0]['geom'], "POLYGON ((-104.0556 41.0037, -104.0584 44.9949, -111.0539 44.9998, -111.0457 40.9986, -104.0556 41.0006, -104.0556 41.0037))")
+        self.assertEqual(area['geofield'][0]['geom'],
+                         "POLYGON ((-104.0556 41.0037, -104.0584 44.9949, -111.0539 44.9998, -111.0457 40.9986, -104.0556 41.0006, -104.0556 41.0037))")
 
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")

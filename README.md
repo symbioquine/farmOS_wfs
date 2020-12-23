@@ -32,3 +32,9 @@ In the `docker/` directory with the above development environment started;
 ```sh
 docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests
 ```
+
+## Formatting tests
+
+```sh
+autopep8 --in-place --recursive docker/qgis_tests/
+```
