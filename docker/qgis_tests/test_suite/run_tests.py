@@ -49,64 +49,25 @@ class TestTest(unittest.TestCase):
 
                 cls.assertTrue(None, delete_response.ok)
 
-            north_field_create_response = s.post('http://www/taxonomy_term', json={
-                "vocabulary": "3",
-                "name": "North field",
-                "description": "Sample description... [created by farmOS_wfs-qgis_tests]",
-                "area_type": "field",
-                "geofield": [
+    def test_qgis_get_point_features(self):
+        north_field_id = self.create_area_entity({
+            "vocabulary": "3",
+            "name": "North field",
+            "description": "Sample description... [created by farmOS_wfs-qgis_tests]",
+            "area_type": "field",
+            "geofield": [
                     {
                         "geom": "POINT(-31.040038615465 39.592143995004)",
                     },
-                ],
-            })
+            ],
+        })
 
-            cls.assertTrue(None, north_field_create_response.ok)
-
-            cls.north_field_id = north_field_create_response.json()['id']
-
-            forty_ninth_parallel_create_response = s.post('http://www/taxonomy_term', json={
-                "vocabulary": "3",
-                "name": "49th Parallel",
-                "description": "Another sample description... [created by farmOS_wfs-qgis_tests]",
-                "area_type": "landmark",
-                "geofield": [
-                    {
-                        "geom": "LINESTRING(-125.75 49,-53.833333 49)",
-                    },
-                ],
-            })
-
-            cls.assertTrue(None, forty_ninth_parallel_create_response.ok)
-
-            cls.forty_ninth_parallel_id = forty_ninth_parallel_create_response.json()[
-                'id']
-
-            colorado_create_response = s.post('http://www/taxonomy_term', json={
-                "vocabulary": "3",
-                "name": "Colorado",
-                "description": "Yet another sample description... [created by farmOS_wfs-qgis_tests]",
-                "area_type": "property",
-                "geofield": [
-                    {
-                        "geom": "POLYGON((-109.0448 37.0004,-102.0424 36.9949,-102.0534 41.0006,-109.0489 40.9996,-109.0448 37.0004,-109.0448 37.0004))",
-                    },
-                ],
-            })
-
-            cls.assertTrue(None, colorado_create_response.ok)
-
-            cls.colorado_id = colorado_create_response.json()['id']
-
-    def test_qgis_get_point_features(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
-
-        self.assertTrue(vlayer.isValid())
 
         features = list(vlayer.getFeatures())
 
         north_field_feature = next(
-            iter(filter(lambda f: f.attribute('area_id') == self.north_field_id, features)))
+            iter(filter(lambda f: f.attribute('area_id') == north_field_id, features)))
 
         self.assertEqual(north_field_feature.attribute('name'), "North field")
         self.assertEqual(north_field_feature.attribute(
@@ -116,14 +77,24 @@ class TestTest(unittest.TestCase):
         ), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
 
     def test_qgis_get_line_string_features(self):
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
+        forty_ninth_parallel_id = self.create_area_entity({
+            "vocabulary": "3",
+            "name": "49th Parallel",
+            "description": "Another sample description... [created by farmOS_wfs-qgis_tests]",
+            "area_type": "landmark",
+            "geofield": [
+                    {
+                        "geom": "LINESTRING(-125.75 49,-53.833333 49)",
+                    },
+            ],
+        })
 
-        self.assertTrue(vlayer.isValid())
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
 
         features = list(vlayer.getFeatures())
 
         forty_ninth_parallel_feature = next(iter(filter(lambda f: f.attribute(
-            'area_id') == self.forty_ninth_parallel_id, features)))
+            'area_id') == forty_ninth_parallel_id, features)))
 
         self.assertEqual(forty_ninth_parallel_feature.attribute(
             'name'), "49th Parallel")
@@ -135,14 +106,24 @@ class TestTest(unittest.TestCase):
         ), '{"coordinates":[[-125.75,49.0],[-53.833333,49.0]],"type":"LineString"}')
 
     def test_qgis_get_polygon_features(self):
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
+        colorado_id = self.create_area_entity({
+            "vocabulary": "3",
+            "name": "Colorado",
+            "description": "Yet another sample description... [created by farmOS_wfs-qgis_tests]",
+            "area_type": "property",
+            "geofield": [
+                    {
+                        "geom": "POLYGON((-109.0448 37.0004,-102.0424 36.9949,-102.0534 41.0006,-109.0489 40.9996,-109.0448 37.0004,-109.0448 37.0004))",
+                    },
+            ],
+        })
 
-        self.assertTrue(vlayer.isValid())
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
 
         features = list(vlayer.getFeatures())
 
         colorado_feature = next(
-            iter(filter(lambda f: f.attribute('area_id') == self.colorado_id, features)))
+            iter(filter(lambda f: f.attribute('area_id') == colorado_id, features)))
 
         self.assertEqual(colorado_feature.attribute('name'), "Colorado")
         self.assertEqual(colorado_feature.attribute(
@@ -312,7 +293,7 @@ class TestTest(unittest.TestCase):
         })
 
     def get_qgis_wfs_vector_layer(self, type_name):
-        return QgsVectorLayer(
+        vlayer = QgsVectorLayer(
             WFS_ENDPOINT + '?' + urlencode(dict(
                 service='WFS',
                 request='GetFeature',
@@ -320,6 +301,12 @@ class TestTest(unittest.TestCase):
                 typename=type_name,
                 authcfg=self.cfg.id(),
             ), safe=':'), type_name, "WFS")
+
+        self.assertTrue(vlayer.isValid())
+
+        vlayer.reload()
+
+        return vlayer
 
     def get_area_entity_by_id(self, area_id):
         self.assertIsInstance(area_id, str)
@@ -335,6 +322,17 @@ class TestTest(unittest.TestCase):
         self.assertTrue(area_response.ok)
 
         return area_response.json()
+
+    def create_area_entity(self, area_entity_data):
+        with requests.Session() as s:
+            s.auth = self.requests_oauth2
+
+            create_response = s.post(
+                'http://www/taxonomy_term', json=area_entity_data)
+
+            self.assertTrue(create_response.ok)
+
+            return create_response.json()['id']
 
     @classmethod
     def setup_requests_oauth(cls):
