@@ -23,3 +23,12 @@ docker-compose up -d
 ```
 
 Once the command completes, farmOS should be running at [http://localhost:80](http://localhost:80) with the farmOS_wfs module installed. The test site's username and password are 'root' and 'test' respectively.
+
+
+## Running tests
+
+In the `docker/` directory with the above development environment started;
+
+```sh
+docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests
+```

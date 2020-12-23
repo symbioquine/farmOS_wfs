@@ -66,6 +66,8 @@ function handle_wfs_describe_feature_type_request($query_params) {
                     $sequence->appendChild($elem('xsd:element', array(
                       "name"  => "area_id",
                       "type" => "string",
+                      "minOccurs" => "0",
+                      "nillable" => "true",
                     )));
 
                     $sequence->appendChild($elem('xsd:element', array(
@@ -81,11 +83,15 @@ function handle_wfs_describe_feature_type_request($query_params) {
                     $sequence->appendChild($elem('xsd:element', array(
                       "name"  => "area_type",
                       "type" => "string",
+                      "minOccurs" => "0",
+                      "nillable" => "true",
                     )));
 
                     $sequence->appendChild($elem('xsd:element', array(
                       "name"  => "description",
                       "type" => "string",
+                      "minOccurs" => "0",
+                      "nillable" => "true",
                     )));
 
                   }));

@@ -52,3 +52,7 @@
 .project
 docker/www
 docker/db
+__pycache__
+.buildpath
+.pydevproject
+.settings

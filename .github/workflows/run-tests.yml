@@ -1,0 +1,22 @@
+name: Run 7.x-1.x tests
+on:
+  push:
+    branches:
+      - '7.x-1.x'
+      - '7.x-1.x-**'
+
+jobs:
+  build:
+    name: Run 7.x-1.x tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Build QGIS Test Harness Docker image
+        run: docker build -t qgis_test_harness docker/qgis_test_harness
+      - name: Start containers
+        run: docker-compose up --project-directory ./docker/ -d
+      - name: Wait until www container is ready
+        run: until [ -f ./www/www-container-fs-ready ]; do sleep 0.1; done
+      - name: Run PHPUnit tests
+        run: docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/docker/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests
