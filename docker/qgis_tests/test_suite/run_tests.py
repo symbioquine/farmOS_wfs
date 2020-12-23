@@ -275,6 +275,95 @@ class TestTest(unittest.TestCase):
         self.assertEqual(area['geofield'][0]['geom'],
                          'POINT (-95.32595536400299 29.297269833884)')
 
+    def test_qgis_update_line_string_feature(self):
+        east_coast_id = self.create_area_entity({
+            "vocabulary": "3",
+            "name": "East coast",
+            "description": "Sample east coast description... [created by farmOS_wfs-qgis_tests]",
+            "area_type": "water",
+            "geofield": [
+                    {
+                        "geom": "LINESTRING(-67.11339126191727 44.38410924306203,-70.66046174786861 43.05308358586231,"
+                        "-70.38761017202621 41.38618744731713,-75.02608696134718 38.61744240874938,"
+                        "-75.4353643251108 35.51577343924532,-81.30167320572264 30.71929617429477,"
+                        "-80.00562822047117 25.425723522771094)",
+                    },
+            ],
+        })
+
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
+
+        features = list(vlayer.getFeatures())
+
+        east_coast_feature = next(
+            iter(filter(lambda f: f.attribute('area_id') == east_coast_id, features)))
+
+        with edit(vlayer):
+            east_coast_feature.setAttribute("name", "East coast (updated)")
+            east_coast_feature.setAttribute("area_type", "other")
+            east_coast_feature.setGeometry(QgsGeometry.fromWkt(
+                "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
+                "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
+                "-75.026086961347 38.617442408749, -75.435364325111 35.515773439245, -79.255286386905 33.321470318467, "
+                "-81.30167320572301 30.719296174295, -79.86920243255 28.285505376336, -80.005628220471 25.425723522771)"))
+
+            vlayer.updateFeature(east_coast_feature)
+
+        area = self.get_area_entity_by_id(east_coast_id)
+
+        self.assertEqual(area['name'], "East coast (updated)")
+        self.assertEqual(area['area_type'], "other")
+        self.assertEqual(area['geofield'][0]['geom'],
+                         "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
+                         "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
+                         "-75.026086961347 38.617442408749, -75.435364325111 35.515773439245, -79.255286386905 33.321470318467, "
+                         "-81.30167320572301 30.719296174295, -79.86920243255 28.285505376336, -80.005628220471 25.425723522771)")
+
+    def test_qgis_update_polygon_feature(self):
+        nevada_id = self.create_area_entity({
+            "vocabulary": "3",
+            "name": "Nevada",
+            "description": "Sample Nevada description... [created by farmOS_wfs-qgis_tests]",
+            "area_type": "property",
+            "geofield": [
+                    {
+                        "geom": "POLYGON((-120.03963847422418 41.96779624409592,-114.05159157669674 41.91964576564612,"
+                         "-113.9868559345613 34.79796936594694,-120.00727065315647 38.98953879241205,"
+                         "-120.03963847422418 41.96779624409592))",
+                    },
+            ],
+        })
+
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
+
+        features = list(vlayer.getFeatures())
+
+        nevada_feature = next(
+            iter(filter(lambda f: f.attribute('area_id') == nevada_id, features)))
+
+        with edit(vlayer):
+            nevada_feature.setAttribute("name", "Nevada (updated)")
+            nevada_feature.setAttribute("area_type", "other")
+            nevada_feature.setGeometry(QgsGeometry.fromWkt(
+                "POLYGON((-120.0008182980056 41.99427533301156,-114.04245641767388 41.99250627234076,"
+                "-114.04392482849038 36.21145647925469,-114.20918794522191 35.995762847791,-114.51771008294033 36.14492383224095,"
+                "-114.74513682100782 36.0732214875824,-114.71740185295083 35.7497520266312,-114.55653903822014 35.212237546616066,"
+                "-114.63419694877979 35.00804095771656,-120.00082376388009 38.99997808039316,-120.0008182980056 41.99427533301156))"))
+
+            vlayer.updateFeature(nevada_feature)
+
+        area = self.get_area_entity_by_id(nevada_id)
+
+        self.maxDiff = None
+
+        self.assertEqual(area['name'], "Nevada (updated)")
+        self.assertEqual(area['area_type'], "other")
+        self.assertEqual(area['geofield'][0]['geom'],
+                         "POLYGON ((-120.00081829801 41.994275333012, -114.04245641767 41.992506272341, "
+                         "-114.04392482849 36.211456479255, -114.20918794522 35.995762847791, -114.51771008294 36.144923832241, "
+                         "-114.74513682101 36.073221487582, -114.71740185295 35.749752026631, -114.55653903822 35.212237546616, "
+                         "-114.63419694878 35.008040957717, -120.00082376388 38.999978080393, -120.00081829801 41.994275333012))")
+
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
 
