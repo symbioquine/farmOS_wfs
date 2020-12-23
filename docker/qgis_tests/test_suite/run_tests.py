@@ -62,7 +62,39 @@ class TestTest(unittest.TestCase):
 
             cls.north_field_id = north_field_create_response.json()['id']
 
-    def test_qgis_get_point_features_in(self):
+            forty_ninth_parallel_create_response = s.post('http://www/taxonomy_term', json={
+                "vocabulary": "3",
+                "name": "49th Parallel",
+                "description": "Another sample description... [created by farmOS_wfs-qgis_tests]",
+                "area_type": "landmark",
+                "geofield": [
+                    {
+                        "geom": "LINESTRING(-125.75 49,-53.833333 49)",
+                    },
+                ],
+            })
+
+            cls.assertTrue(None, forty_ninth_parallel_create_response.ok)
+
+            cls.forty_ninth_parallel_id = forty_ninth_parallel_create_response.json()['id']
+
+            colorado_create_response = s.post('http://www/taxonomy_term', json={
+                "vocabulary": "3",
+                "name": "Colorado",
+                "description": "Yet another sample description... [created by farmOS_wfs-qgis_tests]",
+                "area_type": "property",
+                "geofield": [
+                    {
+                        "geom": "POLYGON((-109.0448 37.0004,-102.0424 36.9949,-102.0534 41.0006,-109.0489 40.9996,-109.0448 37.0004,-109.0448 37.0004))",
+                    },
+                ],
+            })
+
+            cls.assertTrue(None, colorado_create_response.ok)
+
+            cls.colorado_id = colorado_create_response.json()['id']
+
+    def test_qgis_get_point_features(self):
         vlayer = QgsVectorLayer(
             WFS_ENDPOINT + "?typename=farmos:PointArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Point Areas", "WFS")
 
@@ -76,6 +108,36 @@ class TestTest(unittest.TestCase):
         self.assertEqual(north_field_feature.attribute('description'), "Sample description... [created by farmOS_wfs-qgis_tests]")
         self.assertEqual(north_field_feature.attribute('area_type'), "field")
         self.assertEqual(north_field_feature.geometry().asJson(), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
+
+    def test_qgis_get_line_string_features(self):
+        vlayer = QgsVectorLayer(
+            WFS_ENDPOINT + "?typename=farmos:LineStringArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Line String Areas", "WFS")
+
+        self.assertTrue(vlayer.isValid())
+
+        features = list(vlayer.getFeatures())
+
+        forty_ninth_parallel_feature = next(iter(filter(lambda f: f.attribute('area_id') == self.forty_ninth_parallel_id, features)))
+
+        self.assertEqual(forty_ninth_parallel_feature.attribute('name'), "49th Parallel")
+        self.assertEqual(forty_ninth_parallel_feature.attribute('description'), "Another sample description... [created by farmOS_wfs-qgis_tests]")
+        self.assertEqual(forty_ninth_parallel_feature.attribute('area_type'), "landmark")
+        self.assertEqual(forty_ninth_parallel_feature.geometry().asJson(), '{"coordinates":[[-125.75,49.0],[-53.833333,49.0]],"type":"LineString"}')
+
+    def test_qgis_get_polygon_features(self):
+        vlayer = QgsVectorLayer(
+            WFS_ENDPOINT + "?typename=farmos:PolygonArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Polygon Areas", "WFS")
+
+        self.assertTrue(vlayer.isValid())
+
+        features = list(vlayer.getFeatures())
+
+        colorado_feature = next(iter(filter(lambda f: f.attribute('area_id') == self.colorado_id, features)))
+
+        self.assertEqual(colorado_feature.attribute('name'), "Colorado")
+        self.assertEqual(colorado_feature.attribute('description'), "Yet another sample description... [created by farmOS_wfs-qgis_tests]")
+        self.assertEqual(colorado_feature.attribute('area_type'), "property")
+        self.assertEqual(colorado_feature.geometry().asJson(), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
 
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
