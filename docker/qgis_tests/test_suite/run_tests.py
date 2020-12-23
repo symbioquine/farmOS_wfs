@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import unittest
+from urllib.parse import urlencode
 
 import requests
 
@@ -95,8 +96,7 @@ class TestTest(unittest.TestCase):
             cls.colorado_id = colorado_create_response.json()['id']
 
     def test_qgis_get_point_features(self):
-        vlayer = QgsVectorLayer(
-            WFS_ENDPOINT + "?typename=farmos:PointArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Point Areas", "WFS")
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
 
         self.assertTrue(vlayer.isValid())
 
@@ -110,8 +110,7 @@ class TestTest(unittest.TestCase):
         self.assertEqual(north_field_feature.geometry().asJson(), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
 
     def test_qgis_get_line_string_features(self):
-        vlayer = QgsVectorLayer(
-            WFS_ENDPOINT + "?typename=farmos:LineStringArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Line String Areas", "WFS")
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
 
         self.assertTrue(vlayer.isValid())
 
@@ -125,8 +124,7 @@ class TestTest(unittest.TestCase):
         self.assertEqual(forty_ninth_parallel_feature.geometry().asJson(), '{"coordinates":[[-125.75,49.0],[-53.833333,49.0]],"type":"LineString"}')
 
     def test_qgis_get_polygon_features(self):
-        vlayer = QgsVectorLayer(
-            WFS_ENDPOINT + "?typename=farmos:PolygonArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Polygon Areas", "WFS")
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
 
         self.assertTrue(vlayer.isValid())
 
@@ -140,8 +138,7 @@ class TestTest(unittest.TestCase):
         self.assertEqual(colorado_feature.geometry().asJson(), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
 
     def test_qgis_create_point_feature(self):
-        vlayer = QgsVectorLayer(
-            WFS_ENDPOINT + "?typename=farmos:PointArea&version=1.1.0&request=GetFeature&service=WFS&authcfg=" + self.cfg.id(), "farmOS Point Areas", "WFS")
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
 
         with edit(vlayer):
             f = QgsFeature(vlayer.fields())
@@ -237,6 +234,16 @@ class TestTest(unittest.TestCase):
             'geometry': 'Polygon',
             'geometry_column': 'geometry',
         })
+
+    def get_qgis_wfs_vector_layer(self, type_name):
+        return QgsVectorLayer(
+            WFS_ENDPOINT + '?' + urlencode(dict(
+                service='WFS',
+                request='GetFeature',
+                version='1.1.0',
+                typename=type_name,
+                authcfg=self.cfg.id(),
+            ), safe=':'), type_name, "WFS")
 
     @classmethod
     def setup_requests_oauth(cls):
