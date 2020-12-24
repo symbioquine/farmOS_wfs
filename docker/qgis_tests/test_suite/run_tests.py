@@ -11,7 +11,7 @@ import requests
 from oauthlib.oauth2 import LegacyApplicationClient
 from owslib.util import Authentication
 from owslib.wfs import WebFeatureService
-from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer, QgsFeature, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, edit
+from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer, QgsFeature, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, edit, QgsEditError
 from requests_oauthlib import OAuth2Session, OAuth2
 
 
@@ -164,6 +164,18 @@ class TestTest(unittest.TestCase):
         self.assertIn(
             "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
         self.assertEqual(area['geofield'][0]['geom'], 'POINT (10 10)')
+
+    def test_qgis_create_feature_with_unknown_area_type(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
+
+        with self.assertRaises(QgsEditError):
+            with edit(vlayer):
+                f = QgsFeature(vlayer.fields())
+                f.setAttribute("name", "Example point of unknown type")
+                f.setAttribute("area_type", "somethingunknown")
+                f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10, 10)))
+
+                vlayer.addFeature(f)
 
     def test_qgis_create_line_string_feature(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')

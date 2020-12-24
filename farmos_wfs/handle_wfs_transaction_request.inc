@@ -13,6 +13,8 @@ function handle_wfs_transaction_request($transaction_elem) {
     'Delete' => 'handle_wfs_transaction_delete_action',
   );
 
+  $allowed_area_types = array_keys(farm_area_types());
+
   geophp_load();
 
   $transactionResults = new TransactionResults();
@@ -28,7 +30,7 @@ function handle_wfs_transaction_request($transaction_elem) {
       });
     }
 
-    $action_handler($transaction_action_elem, $transactionResults);
+    $action_handler($transaction_action_elem, $transactionResults, $allowed_area_types);
   }
 
   return farmos_wfs_makeDoc(function($doc, $elem) use ($transactionResults) {
@@ -69,14 +71,44 @@ function handle_wfs_transaction_request($transaction_elem) {
 
       }));
 
-      // TODO: Add information about failed transaction actions
+      $transactionResponse->appendChild($elem('wfs:TransactionResults', [],
+        function($insertResults, $elem) use ($transactionResults) {
+
+          foreach ($transactionResults->insertionFailureMessagesByHandle as $handle => $messages) {
+
+            foreach ($messages as $message) {
+
+              $insertResults->appendChild($elem('wfs:Action',
+                $handle ? array('locator' => $handle) : [],
+                function($feature, $elem) use ($message) {
+
+                    $feature->appendChild($elem('wfs:Message', [], $message));
+
+              }));
+
+            }
+
+          }
+
+          foreach ($transactionResults->updateFailureMessages as $failed_update_idx => $message) {
+
+            $insertResults->appendChild($elem('wfs:Action', array('locator' => "failed_update-$failed_update_idx"),
+              function($feature, $elem) use ($message) {
+
+                $feature->appendChild($elem('wfs:Message', [], $message));
+
+            }));
+
+          }
+
+      }));
 
     }));
   });
 
 }
 
-function handle_wfs_transaction_insert_action($transaction_action_elem, $transactionResults) {
+function handle_wfs_transaction_insert_action($transaction_action_elem, $transactionResults, $allowed_area_types) {
   $handle = $transaction_action_elem->attributes['handle'] ?? null;
 
   foreach ($transaction_action_elem->childNodes as $feature_to_insert) {
@@ -98,14 +130,21 @@ function handle_wfs_transaction_insert_action($transaction_action_elem, $transac
     $area = new stdClass();
     $area->vid = $vocab->vid;
 
-    $property_handlers = farmos_wfs_get_property_handlers();
+    $property_handlers = farmos_wfs_get_property_handlers($allowed_area_types);
 
     foreach ($feature_to_insert->childNodes as $feature_property_elem) {
 
       $property_handler = $property_handlers[$feature_property_elem->localName] ?? null;
 
       if ($property_handler) {
-        $property_handler($feature_property_elem, $area);
+
+        try {
+          $property_handler($feature_property_elem, $area);
+        } catch (Exception $e) {
+          $transactionResults->recordInsertionFailure($handle, $e->getMessage());
+          continue 2;
+        }
+
       }
 
     }
@@ -117,14 +156,20 @@ function handle_wfs_transaction_insert_action($transaction_action_elem, $transac
   }
 }
 
-function farmos_wfs_get_property_handlers() {
+function farmos_wfs_get_property_handlers($allowed_area_types) {
   return array(
     'name' => function($e, $area) {
       $area->name = check_plain($e->nodeValue);
     },
-    'area_type' => function($e, $area) {
-      // TODO: Validate area type
-      $area->field_farm_area_type[LANGUAGE_NONE][0]['value'] = $e->nodeValue;
+    'area_type' => function($e, $area) use ($allowed_area_types) {
+      $area_type = $e->nodeValue;
+
+      if (!in_array($area_type, $allowed_area_types)) {
+        $allowed_area_types_str = implode(", ", $allowed_area_types);
+        throw new Exception("Illegal area type $area_type. Value must be one of $allowed_area_types_str");
+      }
+
+      $area->field_farm_area_type[LANGUAGE_NONE][0]['value'] = $area_type;
     },
     'description' => function($e, $area) {
       $area->description = $e->nodeValue;
@@ -136,7 +181,7 @@ function farmos_wfs_get_property_handlers() {
   );
 }
 
-function handle_wfs_transaction_update_action($transaction_action_elem, $transactionResults) {
+function handle_wfs_transaction_update_action($transaction_action_elem, $transactionResults, $allowed_area_types) {
   $type_name = $transaction_action_elem->getAttribute('typeName');
 
   if (!in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
@@ -156,7 +201,7 @@ function handle_wfs_transaction_update_action($transaction_action_elem, $transac
 
   $areas = entity_load('taxonomy_term', $area_ids);
 
-  $property_handlers = farmos_wfs_get_property_handlers();
+  $property_handlers = farmos_wfs_get_property_handlers($allowed_area_types);
 
   $properties = $children_with_tag($transaction_action_elem, 'Property');
 
@@ -171,7 +216,14 @@ function handle_wfs_transaction_update_action($transaction_action_elem, $transac
       $property_handler = $property_handlers[$name] ?? null;
 
       if ($property_handler) {
-        $property_handler($value_elem, $area);
+
+        try {
+          $property_handler($value_elem, $area);
+        } catch (Exception $e) {
+          $transactionResults->recordUpdateFailure($e->getMessage());
+          continue 2;
+        }
+
       }
 
     }
@@ -184,7 +236,7 @@ function handle_wfs_transaction_update_action($transaction_action_elem, $transac
 
 }
 
-function handle_wfs_transaction_delete_action($transaction_action_elem, $transactionResults) {
+function handle_wfs_transaction_delete_action($transaction_action_elem, $transactionResults, $allowed_area_types) {
   $type_name = $transaction_action_elem->getAttribute('typeName');
 
   if (!in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
@@ -213,6 +265,9 @@ class TransactionResults {
   private int $updateSuccessCount = 0;
   private int $deleteSuccessCount = 0;
 
+  public array $insertionFailureMessagesByHandle = [];
+  public array $updateFailureMessages = [];
+
   function totalInserted() {
     return count($this->insertedFeaturesByHandle);
   }
@@ -235,6 +290,14 @@ class TransactionResults {
 
   function recordDeleteSuccess() {
     $this->deleteSuccessCount++;
+  }
+
+  function recordInsertionFailure($handle, $message) {
+    $this->insertionFailureMessagesByHandle[$handle][] = $message;
+  }
+
+  function recordUpdateFailure($message) {
+    $this->updateFailureMessages[] = $message;
   }
 }
 
