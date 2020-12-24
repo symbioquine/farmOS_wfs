@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from contextlib import contextmanager
 import json
 import os
 import sys
@@ -234,7 +235,7 @@ class TestTest(unittest.TestCase):
         self.assertEqual(area['geofield'][0]['geom'],
                          "POLYGON ((-104.0556 41.0037, -104.0584 44.9949, -111.0539 44.9998, -111.0457 40.9986, -104.0556 41.0006, -104.0556 41.0037))")
 
-    def test_qgis_update_point_feature(self):
+    def test_qgis_update_and_delete_point_feature(self):
         south_field_id = self.create_area_entity({
             "vocabulary": "3",
             "name": "South field",
@@ -254,28 +255,42 @@ class TestTest(unittest.TestCase):
         south_field_feature = next(
             iter(filter(lambda f: f.attribute('area_id') == south_field_id, features)))
 
-        with edit(vlayer):
-            south_field_feature.setAttribute("name", "South field (updated)")
-            south_field_feature.setAttribute("area_type", "paddock")
-            south_field_feature.setAttribute(
-                "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]")
-            south_field_feature.setGeometry(QgsGeometry.fromWkt(
-                "POINT(-95.32595536400291 29.29726983388369)"))
+        with self.subTest("update point feature"):
+            with edit(vlayer):
+                south_field_feature.setAttribute(
+                    "name", "South field (updated)")
+                south_field_feature.setAttribute("area_type", "paddock")
+                south_field_feature.setAttribute(
+                    "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]")
+                south_field_feature.setGeometry(QgsGeometry.fromWkt(
+                    "POINT(-95.32595536400291 29.29726983388369)"))
 
-            vlayer.updateFeature(south_field_feature)
+                vlayer.updateFeature(south_field_feature)
 
-        area = self.get_area_entity_by_id(south_field_id)
+            area = self.get_area_entity_by_id(south_field_id)
 
-        self.assertEqual(area['name'], "South field (updated)")
-        self.assertEqual(area['area_type'], "paddock")
-        # The Drupal entity API adds some markup around our description so just
-        # assert that the description is a substring of it
-        self.assertIn(
-            "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]", area['description'])
-        self.assertEqual(area['geofield'][0]['geom'],
-                         'POINT (-95.32595536400299 29.297269833884)')
+            self.assertEqual(area['name'], "South field (updated)")
+            self.assertEqual(area['area_type'], "paddock")
+            # The Drupal entity API adds some markup around our description so just
+            # assert that the description is a substring of it
+            self.assertIn(
+                "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]", area['description'])
+            self.assertEqual(area['geofield'][0]['geom'],
+                             'POINT (-95.32595536400299 29.297269833884)')
 
-    def test_qgis_update_line_string_feature(self):
+        with self.subTest("delete point feature"):
+            with edit(vlayer):
+                self.assertTrue(vlayer.deleteFeature(south_field_feature.id()))
+
+            with self.requests_session() as s:
+                areas_response = s.get(
+                    "http://www/taxonomy_term.json?tid={}".format(south_field_id))
+
+                self.assertTrue(areas_response.ok)
+
+                self.assertFalse(areas_response.json()['list'])
+
+    def test_qgis_update_and_delete_line_string_feature(self):
         east_coast_id = self.create_area_entity({
             "vocabulary": "3",
             "name": "East coast",
@@ -298,28 +313,41 @@ class TestTest(unittest.TestCase):
         east_coast_feature = next(
             iter(filter(lambda f: f.attribute('area_id') == east_coast_id, features)))
 
-        with edit(vlayer):
-            east_coast_feature.setAttribute("name", "East coast (updated)")
-            east_coast_feature.setAttribute("area_type", "other")
-            east_coast_feature.setGeometry(QgsGeometry.fromWkt(
-                "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
-                "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
-                "-75.026086961347 38.617442408749, -75.435364325111 35.515773439245, -79.255286386905 33.321470318467, "
-                "-81.30167320572301 30.719296174295, -79.86920243255 28.285505376336, -80.005628220471 25.425723522771)"))
+        with self.subTest("update line string feature"):
+            with edit(vlayer):
+                east_coast_feature.setAttribute("name", "East coast (updated)")
+                east_coast_feature.setAttribute("area_type", "other")
+                east_coast_feature.setGeometry(QgsGeometry.fromWkt(
+                    "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
+                    "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
+                    "-75.026086961347 38.617442408749, -75.435364325111 35.515773439245, -79.255286386905 33.321470318467, "
+                    "-81.30167320572301 30.719296174295, -79.86920243255 28.285505376336, -80.005628220471 25.425723522771)"))
 
-            vlayer.updateFeature(east_coast_feature)
+                vlayer.updateFeature(east_coast_feature)
 
-        area = self.get_area_entity_by_id(east_coast_id)
+            area = self.get_area_entity_by_id(east_coast_id)
 
-        self.assertEqual(area['name'], "East coast (updated)")
-        self.assertEqual(area['area_type'], "other")
-        self.assertEqual(area['geofield'][0]['geom'],
-                         "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
-                         "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
-                         "-75.026086961347 38.617442408749, -75.435364325111 35.515773439245, -79.255286386905 33.321470318467, "
-                         "-81.30167320572301 30.719296174295, -79.86920243255 28.285505376336, -80.005628220471 25.425723522771)")
+            self.assertEqual(area['name'], "East coast (updated)")
+            self.assertEqual(area['area_type'], "other")
+            self.assertEqual(area['geofield'][0]['geom'],
+                             "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
+                             "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
+                             "-75.026086961347 38.617442408749, -75.435364325111 35.515773439245, -79.255286386905 33.321470318467, "
+                             "-81.30167320572301 30.719296174295, -79.86920243255 28.285505376336, -80.005628220471 25.425723522771)")
 
-    def test_qgis_update_polygon_feature(self):
+        with self.subTest("delete line string feature"):
+            with edit(vlayer):
+                self.assertTrue(vlayer.deleteFeature(east_coast_feature.id()))
+
+            with self.requests_session() as s:
+                areas_response = s.get(
+                    "http://www/taxonomy_term.json?tid={}".format(east_coast_id))
+
+                self.assertTrue(areas_response.ok)
+
+                self.assertFalse(areas_response.json()['list'])
+
+    def test_qgis_update_and_delete_polygon_feature(self):
         nevada_id = self.create_area_entity({
             "vocabulary": "3",
             "name": "Nevada",
@@ -341,28 +369,39 @@ class TestTest(unittest.TestCase):
         nevada_feature = next(
             iter(filter(lambda f: f.attribute('area_id') == nevada_id, features)))
 
-        with edit(vlayer):
-            nevada_feature.setAttribute("name", "Nevada (updated)")
-            nevada_feature.setAttribute("area_type", "other")
-            nevada_feature.setGeometry(QgsGeometry.fromWkt(
-                "POLYGON((-120.0008182980056 41.99427533301156,-114.04245641767388 41.99250627234076,"
-                "-114.04392482849038 36.21145647925469,-114.20918794522191 35.995762847791,-114.51771008294033 36.14492383224095,"
-                "-114.74513682100782 36.0732214875824,-114.71740185295083 35.7497520266312,-114.55653903822014 35.212237546616066,"
-                "-114.63419694877979 35.00804095771656,-120.00082376388009 38.99997808039316,-120.0008182980056 41.99427533301156))"))
+        with self.subTest("update polygon feature"):
+            with edit(vlayer):
+                nevada_feature.setAttribute("name", "Nevada (updated)")
+                nevada_feature.setAttribute("area_type", "other")
+                nevada_feature.setGeometry(QgsGeometry.fromWkt(
+                    "POLYGON((-120.0008182980056 41.99427533301156,-114.04245641767388 41.99250627234076,"
+                    "-114.04392482849038 36.21145647925469,-114.20918794522191 35.995762847791,-114.51771008294033 36.14492383224095,"
+                    "-114.74513682100782 36.0732214875824,-114.71740185295083 35.7497520266312,-114.55653903822014 35.212237546616066,"
+                    "-114.63419694877979 35.00804095771656,-120.00082376388009 38.99997808039316,-120.0008182980056 41.99427533301156))"))
 
-            vlayer.updateFeature(nevada_feature)
+                vlayer.updateFeature(nevada_feature)
 
-        area = self.get_area_entity_by_id(nevada_id)
+            area = self.get_area_entity_by_id(nevada_id)
 
-        self.maxDiff = None
+            self.assertEqual(area['name'], "Nevada (updated)")
+            self.assertEqual(area['area_type'], "other")
+            self.assertEqual(area['geofield'][0]['geom'],
+                             "POLYGON ((-120.00081829801 41.994275333012, -114.04245641767 41.992506272341, "
+                             "-114.04392482849 36.211456479255, -114.20918794522 35.995762847791, -114.51771008294 36.144923832241, "
+                             "-114.74513682101 36.073221487582, -114.71740185295 35.749752026631, -114.55653903822 35.212237546616, "
+                             "-114.63419694878 35.008040957717, -120.00082376388 38.999978080393, -120.00081829801 41.994275333012))")
 
-        self.assertEqual(area['name'], "Nevada (updated)")
-        self.assertEqual(area['area_type'], "other")
-        self.assertEqual(area['geofield'][0]['geom'],
-                         "POLYGON ((-120.00081829801 41.994275333012, -114.04245641767 41.992506272341, "
-                         "-114.04392482849 36.211456479255, -114.20918794522 35.995762847791, -114.51771008294 36.144923832241, "
-                         "-114.74513682101 36.073221487582, -114.71740185295 35.749752026631, -114.55653903822 35.212237546616, "
-                         "-114.63419694878 35.008040957717, -120.00082376388 38.999978080393, -120.00081829801 41.994275333012))")
+        with self.subTest("delete polygon feature"):
+            with edit(vlayer):
+                self.assertTrue(vlayer.deleteFeature(nevada_feature.id()))
+
+            with self.requests_session() as s:
+                areas_response = s.get(
+                    "http://www/taxonomy_term.json?tid={}".format(nevada_id))
+
+                self.assertTrue(areas_response.ok)
+
+                self.assertFalse(areas_response.json()['list'])
 
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
@@ -443,9 +482,7 @@ class TestTest(unittest.TestCase):
         self.assertTrue(area_id.isnumeric(),
                         "area_id.isnumeric()")
 
-        with requests.Session() as s:
-            s.auth = self.requests_oauth2
-
+        with self.requests_session() as s:
             area_response = s.get(
                 "http://www/taxonomy_term/{}.json".format(area_id))
 
@@ -454,15 +491,19 @@ class TestTest(unittest.TestCase):
         return area_response.json()
 
     def create_area_entity(self, area_entity_data):
-        with requests.Session() as s:
-            s.auth = self.requests_oauth2
-
+        with self.requests_session() as s:
             create_response = s.post(
                 'http://www/taxonomy_term', json=area_entity_data)
 
             self.assertTrue(create_response.ok)
 
             return create_response.json()['id']
+
+    @contextmanager
+    def requests_session(self):
+        with requests.Session() as s:
+            s.auth = self.requests_oauth2
+            yield s
 
     @classmethod
     def setup_requests_oauth(cls):
