@@ -1,6 +1,6 @@
 farmos_wfs.content:
   path: '/wfs'
   defaults:
-    _controller: '\Drupal\farmos_wfs\Controller\FarmWfsController::content'
+    _controller: farmos_wfs.top_level_controller:content
   requirements:
     _permission: 'access content'

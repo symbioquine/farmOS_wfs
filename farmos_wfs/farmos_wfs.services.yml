@@ -1,0 +1,23 @@
+services:
+  farmos_wfs.top_level_controller:
+    class: Drupal\farmos_wfs\Controller\FarmWfsController
+    arguments:
+     - '@request_stack'
+     - '@config.factory'
+     - '@farmos_wfs.get_capabilities_handler'
+     - '@farmos_wfs.describe_feature_type_handler'
+     - '@farmos_wfs.get_feature_handler'
+     - '@farmos_wfs.transaction_handler'
+
+  farmos_wfs.get_capabilities_handler:
+    class: Drupal\farmos_wfs\Handler\FarmWfsGetCapabilitiesHandler
+    arguments: ['@request_stack', '@config.factory', '@current_user']
+
+  farmos_wfs.describe_feature_type_handler:
+    class: Drupal\farmos_wfs\Handler\FarmWfsDescribeFeatureTypeHandler
+
+  farmos_wfs.get_feature_handler:
+    class: Drupal\farmos_wfs\Handler\FarmWfsGetFeatureHandler
+
+  farmos_wfs.transaction_handler:
+    class: Drupal\farmos_wfs\Handler\FarmWfsTransactionHandler
