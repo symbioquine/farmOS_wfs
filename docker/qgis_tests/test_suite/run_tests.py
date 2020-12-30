@@ -38,51 +38,64 @@ class TestTest(unittest.TestCase):
         with requests.Session() as s:
             s.auth = cls.requests_oauth2
 
-            farm_areas_response = s.get(
-                "http://www/api/asset/land?filter[is_location]=1")
+            def assert_get_json(url):
+                response = s.get(url)
 
-            if not farm_areas_response.ok:
-                print(farm_areas_response.text)
+                if not response.ok:
+                    print(response.text)
 
-            cls.assertTrue(None, farm_areas_response.ok)
+                cls.assertTrue(None, response.ok)
 
-            farm_areas = farm_areas_response.json()
+                return response.json()
 
-            for area in farm_areas['data']:
-                if not '[created by farmOS_wfs-qgis_tests]' in area['attributes']['notes']['value']:
-                    continue
+            asset_types = assert_get_json(
+                "http://www/api/asset_type/asset_type")
 
-                delete_response = s.delete(area['links']['self']['href'])
+            for asset_type in asset_types['data']:
 
-                cls.assertTrue(None, delete_response.ok)
+                farm_assets = assert_get_json(
+                    "http://www/api/asset/{}?filter[is_location]=1".format(asset_type['attributes']['drupal_internal__id']))
+
+                for asset in farm_assets['data']:
+                    notes = (asset['attributes'].get(
+                        'notes', None) or {}).get('value', '')
+
+                    if not '[created by farmOS_wfs-qgis_tests]' in notes:
+                        continue
+
+                    delete_response = s.delete(asset['links']['self']['href'])
+
+                    cls.assertTrue(None, delete_response.ok)
 
     def test_qgis_get_point_features(self):
-        north_field_id = self.create_area_entity({
-            "vocabulary": "3",
+        north_field_id = self.create_asset('land', {
             "name": "North field",
-            "description": "Sample description... [created by farmOS_wfs-qgis_tests]",
-            "area_type": "field",
-            "geofield": [
-                    {
-                        "geom": "POINT(-31.040038615465 39.592143995004)",
-                    },
-            ],
+            "notes": {
+                "value": "Sample description... [created by farmOS_wfs-qgis_tests]",
+            },
+            "intrinsic_geometry": {
+                "value": "POINT(-31.040038615465 39.592143995004)",
+            },
+            "land_type": "field",
+            "is_location": True,
+            "is_field": True,
         })
 
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset.land.point')
 
         features = list(vlayer.getFeatures())
 
         north_field_feature = next(
-            iter(filter(lambda f: f.attribute('area_id') == north_field_id, features)))
+            iter(filter(lambda f: f.attribute('asset_id') == north_field_id, features)))
 
         self.assertEqual(north_field_feature.attribute('name'), "North field")
         self.assertEqual(north_field_feature.attribute(
-            'description'), "Sample description... [created by farmOS_wfs-qgis_tests]")
-        self.assertEqual(north_field_feature.attribute('area_type'), "field")
+            'notes'), "Sample description... [created by farmOS_wfs-qgis_tests]")
+        self.assertEqual(north_field_feature.attribute('land_type'), "field")
         self.assertEqual(north_field_feature.geometry().asJson(
         ), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_get_line_string_features(self):
         forty_ninth_parallel_id = self.create_area_entity({
             "vocabulary": "3",
@@ -112,6 +125,7 @@ class TestTest(unittest.TestCase):
         self.assertEqual(forty_ninth_parallel_feature.geometry().asJson(
         ), '{"coordinates":[[-125.75,49.0],[-53.833333,49.0]],"type":"LineString"}')
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_get_polygon_features(self):
         colorado_id = self.create_area_entity({
             "vocabulary": "3",
@@ -139,6 +153,7 @@ class TestTest(unittest.TestCase):
         self.assertEqual(colorado_feature.geometry().asJson(
         ), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_create_point_feature(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
 
@@ -171,6 +186,7 @@ class TestTest(unittest.TestCase):
             "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
         self.assertEqual(area['geofield'][0]['geom'], 'POINT (10 10)')
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_create_feature_with_unknown_area_type(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
 
@@ -183,6 +199,7 @@ class TestTest(unittest.TestCase):
 
                 vlayer.addFeature(f)
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_create_line_string_feature(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
 
@@ -219,6 +236,7 @@ class TestTest(unittest.TestCase):
                          "-124.34239344538 40.3816042701, -120.56165946119 34.590839327976, "
                          "-118.06564090851 33.67938896804, -117.25810549441 32.603697051223)")
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_create_polygon_feature(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
 
@@ -253,6 +271,7 @@ class TestTest(unittest.TestCase):
         self.assertEqual(area['geofield'][0]['geom'],
                          "POLYGON ((-104.0556 41.0037, -104.0584 44.9949, -111.0539 44.9998, -111.0457 40.9986, -104.0556 41.0006, -104.0556 41.0037))")
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_update_and_delete_point_feature(self):
         south_field_id = self.create_area_entity({
             "vocabulary": "3",
@@ -308,6 +327,7 @@ class TestTest(unittest.TestCase):
 
                 self.assertFalse(areas_response.json()['list'])
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_update_and_delete_line_string_feature(self):
         east_coast_id = self.create_area_entity({
             "vocabulary": "3",
@@ -365,6 +385,7 @@ class TestTest(unittest.TestCase):
 
                 self.assertFalse(areas_response.json()['list'])
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_update_and_delete_polygon_feature(self):
         nevada_id = self.create_area_entity({
             "vocabulary": "3",
@@ -431,8 +452,12 @@ class TestTest(unittest.TestCase):
                             'GetCapabilities', 'GetFeature', 'DescribeFeatureType', 'Transaction'})
 
         self.assertSetEqual(set(self.wfs11.contents), {
-                            'farmos:PointArea', 'farmos:PolygonArea', 'farmos:LineStringArea'})
+                            'farmos:asset.{asset_type}.{geometry_type}'.format(asset_type=asset_type, geometry_type=geometry_type)
+                                for asset_type in ('animal', 'equipment', 'land', 'plant', 'structure', 'water')
+                                for geometry_type in ('point', 'linestring', 'polygon')
+                        })
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_owslib_point_area(self):
         point_area_schema = self.wfs11.get_schema('farmos:PointArea')
 
@@ -448,6 +473,7 @@ class TestTest(unittest.TestCase):
             'geometry_column': 'geometry',
         })
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_owslib_line_string_area(self):
         line_string_area_schema = self.wfs11.get_schema(
             'farmos:LineStringArea')
@@ -464,6 +490,7 @@ class TestTest(unittest.TestCase):
             'geometry_column': 'geometry',
         })
 
+    @unittest.skip("Not yet updated for 2.x")
     def test_owslib_polygon_area(self):
         polygon_area_schema = self.wfs11.get_schema('farmos:PolygonArea')
 
@@ -508,14 +535,19 @@ class TestTest(unittest.TestCase):
 
         return area_response.json()
 
-    def create_area_entity(self, area_entity_data):
+    def create_asset(self, asset_type, asset_attributes):
         with self.requests_session() as s:
             create_response = s.post(
-                'http://www/taxonomy_term', json=area_entity_data)
+                'http://www/api/asset/{}'.format(asset_type), json={
+                    "data": {
+                        "type": "asset--" + asset_type,
+                        "attributes": asset_attributes,
+                    },
+                }, headers={'content-type': 'application/vnd.api+json'})
 
             self.assertTrue(create_response.ok)
 
-            return create_response.json()['id']
+            return create_response.json()['data']['id']
 
     @contextmanager
     def requests_session(self):

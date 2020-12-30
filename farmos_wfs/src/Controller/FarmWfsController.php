@@ -37,21 +37,21 @@ class FarmWfsController extends ControllerBase {
    * @var \Drupal\farmos_wfs\Handler\FarmWfsGetCapabilitiesHandler
    */
   protected $getCapabilitiesHandler;
-  
+
   /**
    * The DescribeFeatureType handler
    *
    * @var \Drupal\farmos_wfs\Handler\FarmWfsDescribeFeatureTypeHandler
    */
   protected $describeFeatureTypeHandler;
-  
+
   /**
    * The GetFeature handler
    *
    * @var \Drupal\farmos_wfs\Handler\FarmWfsGetFeatureHandler
    */
   protected $getFeatureHandler;
-  
+
   /**
    * The Transaction handler
    *
@@ -68,14 +68,7 @@ class FarmWfsController extends ControllerBase {
    *          The object State.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    */
-  public function __construct(
-    RequestStack $request_stack,
-    ConfigFactoryInterface $config_factory,
-    FarmWfsGetCapabilitiesHandler $getCapabilitiesHandler,
-    FarmWfsDescribeFeatureTypeHandler $describeFeatureTypeHandler,
-    FarmWfsGetFeatureHandler $getFeatureHandler,
-    FarmWfsTransactionHandler $transactionHandler) {
-
+  public function __construct(RequestStack $request_stack, ConfigFactoryInterface $config_factory, FarmWfsGetCapabilitiesHandler $getCapabilitiesHandler, FarmWfsDescribeFeatureTypeHandler $describeFeatureTypeHandler, FarmWfsGetFeatureHandler $getFeatureHandler, FarmWfsTransactionHandler $transactionHandler) {
     $this->requestStack = $request_stack;
     $this->configFactory = $config_factory;
 
@@ -125,7 +118,7 @@ class FarmWfsController extends ControllerBase {
     $request_handlers = array(
       'GetCapabilities' => $this->getCapabilitiesHandler,
       'DescribeFeatureType' => $this->describeFeatureTypeHandler,
-      'GetFeature' => $this->getFeatureHandler,
+      'GetFeature' => $this->getFeatureHandler
     );
 
     $requested_operation = $query_params['REQUEST'] ?? null;
