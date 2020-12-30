@@ -11,7 +11,11 @@ services:
 
   farmos_wfs.get_capabilities_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsGetCapabilitiesHandler
-    arguments: ['@request_stack', '@config.factory', '@current_user']
+    arguments:
+     - '@request_stack'
+     - '@config.factory'
+     - '@entity_type.bundle.info'
+     - '@current_user'
 
   farmos_wfs.describe_feature_type_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsDescribeFeatureTypeHandler

@@ -20,6 +20,12 @@ const FARMOS_WFS_UNQUALIFIED_TYPE_NAMES = [
   'LineStringArea'
 ];
 
+const FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES = [
+  'Point',
+  'Polygon',
+  'LineString'
+];
+
 function farmos_wfs_makeDoc($declarator) {
   $xml = new DomDocument('1.0', 'UTF-8');
 
@@ -52,15 +58,18 @@ function farmos_wfs_makeDoc($declarator) {
 }
 
 function farmos_wfs_makeExceptionReport($declarator) {
-  return farmos_wfs_makeDoc(function ($doc, $elem) use ($declarator) {
-    $doc->appendChild($elem('ExceptionReport', array(
-      'xmlns' => "http://www.opengis.net/ows/1.1",
-      'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
-      'xsi:schemaLocation' => "http://www.opengis.net/ows/1.1 owsExceptionReport.xsd",
-      'version' => FARMOS_WFS_IMPLEMENTATION_VERSION,
-      'xml:lang' => "en"
-    ), $declarator));
-  });
+  return farmos_wfs_makeDoc(
+    function ($doc, $elem) use ($declarator) {
+      $doc->appendChild(
+        $elem('ExceptionReport',
+          array(
+            'xmlns' => "http://www.opengis.net/ows/1.1",
+            'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
+            'xsi:schemaLocation' => "http://www.opengis.net/ows/1.1 owsExceptionReport.xsd",
+            'version' => FARMOS_WFS_IMPLEMENTATION_VERSION,
+            'xml:lang' => "en"
+          ), $declarator));
+    });
 }
 
 // Based on https://www.php.net/manual/en/domdocument.loadxml.php#69295
@@ -87,12 +96,15 @@ define("FARMOS_WFS_EMPTY_FILTER_BEHAVIOR_MATCH_NONE", 'match_none');
 /*
  * Retrieves an array of taxonomy ids for the areas which have a particular geometry type and (optionally) match a OGC Filter or fall within a given bounding box.
  */
-function farmos_wfs_ogc_filter_one_point_one_to_area_ids($geo_types, $filter_elem, $bbox = null, $empty_filter_behavior = FARMOS_WFS_EMPTY_FILTER_BEHAVIOR_MATCH_NONE) {
+function farmos_wfs_ogc_filter_one_point_one_to_area_ids($geo_types, $filter_elem, $bbox = null,
+  $empty_filter_behavior = FARMOS_WFS_EMPTY_FILTER_BEHAVIOR_MATCH_NONE) {
   $filter_ids = [];
   if ($filter_elem) {
-    $nontext_filter_children = array_values(array_filter(iterator_to_array($filter_elem->childNodes), function ($e) {
-      return ! ($e instanceof DomText && $e->isWhitespaceInElementContent());
-    }));
+    $nontext_filter_children = array_values(
+      array_filter(iterator_to_array($filter_elem->childNodes),
+        function ($e) {
+          return ! ($e instanceof DomText && $e->isWhitespaceInElementContent());
+        }));
 
     $distinct_child_names = array_unique(array_map(function ($e) {
       return $e->localName;
@@ -111,11 +123,13 @@ function farmos_wfs_ogc_filter_one_point_one_to_area_ids($geo_types, $filter_ele
 
       $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
 
-      $filter_raw_ids = array_merge(array_map(function ($e) {
-        return $e->getAttribute('fid');
-      }, $children_with_tag($filter_elem, 'FeatureId')), array_map(function ($e) {
-        return $e->getAttribute('id');
-      }, $children_with_tag($filter_elem, 'GmlObjectId')));
+      $filter_raw_ids = array_merge(
+        array_map(function ($e) {
+          return $e->getAttribute('fid');
+        }, $children_with_tag($filter_elem, 'FeatureId')),
+        array_map(function ($e) {
+          return $e->getAttribute('id');
+        }, $children_with_tag($filter_elem, 'GmlObjectId')));
 
       $filter_ids = array_map(function ($raw_id) {
         return preg_replace('/^[^.]+\.(\d+)$/', '$1', $raw_id);

@@ -2,15 +2,15 @@
 
 namespace Drupal\farmos_wfs\Controller;
 
-use Drupal\Core\Controller\ControllerBase;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\RequestStack;
-use DOMDocument;
 use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\farmos_wfs\Handler\FarmWfsGetCapabilitiesHandler;
+use Drupal\Core\Controller\ControllerBase;
 use Drupal\farmos_wfs\Handler\FarmWfsDescribeFeatureTypeHandler;
+use Drupal\farmos_wfs\Handler\FarmWfsGetCapabilitiesHandler;
 use Drupal\farmos_wfs\Handler\FarmWfsGetFeatureHandler;
 use Drupal\farmos_wfs\Handler\FarmWfsTransactionHandler;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
+use DOMDocument;
 
 /**
  * Defines FarmWfsController class.
@@ -68,7 +68,9 @@ class FarmWfsController extends ControllerBase {
    *          The object State.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    */
-  public function __construct(RequestStack $request_stack, ConfigFactoryInterface $config_factory, FarmWfsGetCapabilitiesHandler $getCapabilitiesHandler, FarmWfsDescribeFeatureTypeHandler $describeFeatureTypeHandler, FarmWfsGetFeatureHandler $getFeatureHandler, FarmWfsTransactionHandler $transactionHandler) {
+  public function __construct(RequestStack $request_stack, ConfigFactoryInterface $config_factory,
+    FarmWfsGetCapabilitiesHandler $getCapabilitiesHandler, FarmWfsDescribeFeatureTypeHandler $describeFeatureTypeHandler,
+    FarmWfsGetFeatureHandler $getFeatureHandler, FarmWfsTransactionHandler $transactionHandler) {
     $this->requestStack = $request_stack;
     $this->configFactory = $config_factory;
 
@@ -105,12 +107,14 @@ class FarmWfsController extends ControllerBase {
     $service = $query_params['SERVICE'] ?? null;
 
     if ($service !== "WFS") {
-      return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-        $eReport->appendChild($elem('Exception', array(
-          "exceptionCode" => "InvalidParameterValue",
-          "locator" => "service"
-        )));
-      });
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "InvalidParameterValue",
+              "locator" => "service"
+            )));
+        });
     }
 
     // TODO: Validate version parameter
@@ -130,25 +134,29 @@ class FarmWfsController extends ControllerBase {
     if ($requested_operation_handler) {
       if ($request_method != "GET") {
 
-        return farmos_wfs_makeExceptionReport(function ($eReport, $elem) use ($requested_operation, $request_method) {
-          $eReport->appendChild($elem('Exception', array(
-            "exceptionCode" => "InvalidParameterValue",
-            "locator" => "request"
-          ), $elem('ExceptionText', [], "The $requested_operation operation is not supported via $request_method")));
-        });
+        return farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) use ($requested_operation, $request_method) {
+            $eReport->appendChild(
+              $elem('Exception', array(
+                "exceptionCode" => "InvalidParameterValue",
+                "locator" => "request"
+              ), $elem('ExceptionText', [], "The $requested_operation operation is not supported via $request_method")));
+          });
       }
 
       return $requested_operation_handler->handle($query_params);
     }
 
     if ($requested_operation == "Transaction" || $request_method == "POST") {
-      if (! user_access('administer taxonomy')) {
+      if (! user_access('Administer assets')) {
 
-        return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-          $eReport->appendChild($elem('Exception', array(
-            "exceptionCode" => "AccessDenied"
-          ), $elem('ExceptionText', [], "Access denied")));
-        });
+        return farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) {
+            $eReport->appendChild(
+              $elem('Exception', array(
+                "exceptionCode" => "AccessDenied"
+              ), $elem('ExceptionText', [], "Access denied")));
+          });
       }
 
       $request_body = file_get_contents('php://input');
@@ -162,19 +170,24 @@ class FarmWfsController extends ControllerBase {
 
       if (! $doc->firstChild || $doc->firstChild->nodeName != "Transaction") {
 
-        return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-          $eReport->appendChild($elem('Exception', [], $elem('ExceptionText', [], "Could not understand request body: root element must be a Transaction")));
-        });
+        return farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) {
+            $eReport->appendChild(
+              $elem('Exception', [],
+                $elem('ExceptionText', [], "Could not understand request body: root element must be a Transaction")));
+          });
       }
 
       return $this->transactionHandler($query_params, $doc->firstChild);
     }
 
-    return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-      $eReport->appendChild($elem('Exception', array(
-        "exceptionCode" => "InvalidParameterValue",
-        "locator" => "request"
-      )));
-    });
+    return farmos_wfs_makeExceptionReport(
+      function ($eReport, $elem) {
+        $eReport->appendChild(
+          $elem('Exception', array(
+            "exceptionCode" => "InvalidParameterValue",
+            "locator" => "request"
+          )));
+      });
   }
 }
