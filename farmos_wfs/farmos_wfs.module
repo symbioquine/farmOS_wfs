@@ -20,10 +20,18 @@ const FARMOS_WFS_UNQUALIFIED_TYPE_NAMES = [
   'LineStringArea'
 ];
 
+const FARMOS_WFS_FEATURE_TYPE_PATTERN = '/^(farmos:)?asset.(?P<asset_type>\w+).(?P<geometry_type>\w+)$/';
+
 const FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES = [
   'Point',
   'Polygon',
   'LineString'
+];
+
+const FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES_LOWERCASE_TO_UPPERCASE = [
+  'point' => 'Point',
+  'polygon' => 'Polygon',
+  'linestring' => 'LineString'
 ];
 
 function farmos_wfs_makeDoc($declarator) {

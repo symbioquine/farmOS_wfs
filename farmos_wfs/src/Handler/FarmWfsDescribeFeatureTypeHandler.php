@@ -2,15 +2,58 @@
 
 namespace Drupal\farmos_wfs\Handler;
 
+use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use const False\MyClass\true;
+
 /**
  * Defines FarmWfsDescribeFeatureTypeHandler class.
  */
 class FarmWfsDescribeFeatureTypeHandler {
 
+  protected $entityTypeManager;
+
+  protected $entityTypeBundleInfo;
+
+  protected $entityFieldManager;
+
+  public function __construct(EntityTypeManagerInterface $entity_type_manager,
+    EntityTypeBundleInfoInterface $entity_bundle_info, EntityFieldManagerInterface $entity_field_manager) {
+    $this->entityTypeManager = $entity_type_manager;
+    $this->entityTypeBundleInfo = $entity_bundle_info;
+    $this->entityFieldManager = $entity_field_manager;
+  }
+
   public function handle(array $query_params) {
+    // $asset_entity_type = $this->entityTypeManager->getDefinition('asset');
+
+    // dpm($asset_entity_type->id());
     $requested_type_names = array_filter(explode(',', $query_params['TYPENAME'] ?? ''));
 
-    $unknown_type_names = array_diff_key($requested_type_names, FARMOS_WFS_QUALIFIED_TYPE_NAMES);
+    $asset_bundles = $this->entityTypeBundleInfo->getBundleInfo('asset');
+
+    $unknown_type_names = array_filter($requested_type_names,
+      function ($requested_type_name) use ($asset_bundles) {
+        $matches = [];
+        if (! preg_match(FARMOS_WFS_FEATURE_TYPE_PATTERN, $requested_type_name, $matches)) {
+          return false;
+        }
+
+        $asset_type = $matches['asset_type'];
+
+        if (! in_array($asset_type, $asset_bundles)) {
+          return false;
+        }
+
+        $geometry_type = $matches['geometry_type'];
+
+        if (! in_array($geometry_type, FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES_LOWERCASE_TO_UPPERCASE)) {
+          return false;
+        }
+
+        return true;
+      });
 
     if (! empty($unknown_type_names)) {
       return farmos_wfs_makeExceptionReport(
@@ -24,7 +67,16 @@ class FarmWfsDescribeFeatureTypeHandler {
     }
 
     if (empty($requested_type_names)) {
-      $requested_type_names = FARMOS_WFS_QUALIFIED_TYPE_NAMES;
+      $requested_type_names = [];
+      foreach ($asset_bundles as $asset_type => $asset_bundle_info) {
+        foreach (FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES as $geometry_type) {
+          $requested_type_names[] = implode('.', [
+            'farmos:asset',
+            $asset_type,
+            strtolower($geometry_type)
+          ]);
+        }
+      }
     }
 
     return farmos_wfs_makeDoc(
@@ -49,76 +101,105 @@ class FarmWfsDescribeFeatureTypeHandler {
                     "schemaLocation" => "http://schemas.opengis.net/gml/3.1.1/base/gml.xsd"
                   )));
 
-              foreach ($requested_type_names as $type_name) {
+              foreach ($requested_type_names as $requested_type_name) {
+                $matches = [];
+                preg_match(FARMOS_WFS_FEATURE_TYPE_PATTERN, $requested_type_name, $matches);
 
-                $geometry_type = preg_replace('/^farmos:(.*)Area$/', '$1', $type_name);
+                $asset_type = $matches['asset_type'];
+                $geometry_type = $matches['geometry_type'];
 
                 $schema->appendChild(
                   $elem('xsd:element',
                     array(
-                      "name" => "{$geometry_type}Area",
-                      "type" => "farmos:{$geometry_type}AreaType",
+                      "name" => "asset.{$asset_type}.{$geometry_type}",
+                      "type" => "farmos:asset.{$asset_type}.{$geometry_type}.type",
                       "substitutionGroup" => "gml:_Feature"
                     )));
 
                 $schema->appendChild(
                   $elem('xsd:complexType', array(
-                    "name" => "{$geometry_type}AreaType"
+                    "name" => "asset.{$asset_type}.{$geometry_type}.type"
                   ),
-                    function ($complexType, $elem) use ($geometry_type) {
+                    function ($complexType, $elem) use ($asset_type, $geometry_type) {
 
                       $complexType->appendChild(
                         $elem('xsd:complexContent', array(),
-                          function ($complexContent, $elem) use ($geometry_type) {
+                          function ($complexContent, $elem) use ($asset_type, $geometry_type) {
 
                             $complexContent->appendChild(
                               $elem('xsd:extension', array(
                                 "base" => "gml:AbstractFeatureType"
                               ),
-                                function ($extension, $elem) use ($geometry_type) {
+                                function ($extension, $elem) use ($asset_type, $geometry_type) {
 
                                   $extension->appendChild(
                                     $elem('xsd:sequence', array(),
-                                      function ($sequence, $elem) use ($geometry_type) {
+                                      function ($sequence, $elem) use ($asset_type, $geometry_type) {
 
-                                        $sequence->appendChild(
-                                          $elem('xsd:element',
-                                            array(
-                                              "name" => "area_id",
-                                              "type" => "string",
-                                              "minOccurs" => "0",
-                                              "nillable" => "true"
-                                            )));
+                                        $field_definitions = $this->entityFieldManager->getFieldDefinitions('asset',
+                                          $asset_type);
+
+                                        foreach ($field_definitions as $field_id => $field_definition) {
+                                          dpm($field_id . ': ' . $field_definition->getType());
+
+                                          $field_type = $field_definition->getType();
+
+                                          $supported_field_types = [
+                                            'string',
+                                            'text_long',
+                                            'timestamp',
+                                            'boolean',
+                                            'uuid',
+                                            'list_string',
+                                            'string_long',
+                                            'integer',
+                                          ];
+
+                                          if (in_array($field_type, $supported_field_types)) {
+
+                                            $elem_attrs = [];
+
+                                            if ($field_definition->isReadOnly()) {
+                                              $elem_attrs["name"] = '__' . $field_id;
+                                            } else {
+                                              $elem_attrs["name"] = $field_id;
+                                            }
+
+                                            if ($field_type == 'string' || $field_type == 'text_long' ||
+                                            $field_type == 'list_string' || $field_type == 'string_long') {
+                                              $elem_attrs["type"] = "string";
+                                            } elseif ($field_type == 'timestamp') {
+                                              $elem_attrs["type"] = "dateTime";
+                                            } elseif ($field_type == 'boolean') {
+                                              $elem_attrs["type"] = "boolean";
+                                            } elseif ($field_type == 'uuid') {
+                                              $elem_attrs["type"] = "string";
+                                            } elseif ($field_type == 'integer') {
+                                              $elem_attrs["type"] = "integer";
+                                            }
+
+                                            if (! $field_definition->isRequired()) {
+                                              $elem_attrs['nillable'] = 'true';
+                                              $elem_attrs['minOccurs'] = '0';
+                                            }
+
+                                            $cardinality = $field_definition->getCardinality();
+
+                                            if ($cardinality > 1) {
+                                              $elem_attrs['maxOccurs'] = "$cardinality";
+                                            }
+
+                                            $sequence->appendChild($elem('xsd:element', $elem_attrs));
+                                          }
+                                        }
+
+                                        $geometry_type_name = FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES_LOWERCASE_TO_UPPERCASE[$geometry_type];
 
                                         $sequence->appendChild(
                                           $elem('xsd:element',
                                             array(
                                               "name" => "geometry",
-                                              "type" => "gml:{$geometry_type}PropertyType"
-                                            )));
-
-                                        $sequence->appendChild(
-                                          $elem('xsd:element', array(
-                                            "name" => "name",
-                                            "type" => "string"
-                                          )));
-
-                                        $sequence->appendChild(
-                                          $elem('xsd:element',
-                                            array(
-                                              "name" => "area_type",
-                                              "type" => "string",
-                                              "minOccurs" => "0",
-                                              "nillable" => "true"
-                                            )));
-
-                                        $sequence->appendChild(
-                                          $elem('xsd:element',
-                                            array(
-                                              "name" => "description",
-                                              "type" => "string",
-                                              "minOccurs" => "0",
-                                              "nillable" => "true"
+                                              "type" => "gml:{$geometry_type_name}PropertyType"
                                             )));
                                       }));
                                 }));

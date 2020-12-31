@@ -19,6 +19,10 @@ services:
 
   farmos_wfs.describe_feature_type_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsDescribeFeatureTypeHandler
+    arguments:
+     - '@entity_type.manager'
+     - '@entity_type.bundle.info'
+     - '@entity_field.manager'
 
   farmos_wfs.get_feature_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsGetFeatureHandler

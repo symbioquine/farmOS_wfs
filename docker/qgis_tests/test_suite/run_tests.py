@@ -457,18 +457,30 @@ class TestTest(unittest.TestCase):
                                 for geometry_type in ('point', 'linestring', 'polygon')
                         })
 
-    @unittest.skip("Not yet updated for 2.x")
-    def test_owslib_point_area(self):
-        point_area_schema = self.wfs11.get_schema('farmos:PointArea')
+    def test_owslib_land_asset_point_schema(self):
+        self.maxDiff = None
 
-        self.assertDictEqual(point_area_schema, {
+        land_asset_point_schema = self.wfs11.get_schema('farmos:asset.land.point')
+
+        self.assertDictEqual(land_asset_point_schema, {
             'properties': {
-                'area_id': 'string',
+                '__id': 'integer',
+                '__uuid': 'string',
+                '__revision_id': 'integer',
+                '__revision_translation_affected': 'boolean',
                 'name': 'string',
-                'area_type': 'string',
-                'description': 'string'
+                'data': 'string',
+                'land_type': 'string',
+                'notes': 'string',
+                'is_fixed': 'boolean',
+                'is_location': 'boolean',
+                'archived': 'dateTime',
+                'flag': 'string',
+                'default_langcode': 'boolean',
+                'revision_default': 'boolean',
+                'revision_log_message': 'string',
             },
-            'required': ['geometry', 'name'],
+            'required': ['name', 'land_type', 'geometry'],
             'geometry': 'Point',
             'geometry_column': 'geometry',
         })
