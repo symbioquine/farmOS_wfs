@@ -5,7 +5,8 @@ namespace Drupal\farmos_wfs\Handler;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use const False\MyClass\true;
+use Drupal\farmos_wfs\FarmWfsFeatureType;
+use Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator;
 
 /**
  * Defines FarmWfsDescribeFeatureTypeHandler class.
@@ -18,42 +19,22 @@ class FarmWfsDescribeFeatureTypeHandler {
 
   protected $entityFieldManager;
 
+  protected $featureTypeFactoryValidator;
+
   public function __construct(EntityTypeManagerInterface $entity_type_manager,
-    EntityTypeBundleInfoInterface $entity_bundle_info, EntityFieldManagerInterface $entity_field_manager) {
+    EntityTypeBundleInfoInterface $entity_bundle_info, EntityFieldManagerInterface $entity_field_manager,
+    FarmWfsFeatureTypeFactoryValidator $feature_type_factory_validator) {
     $this->entityTypeManager = $entity_type_manager;
     $this->entityTypeBundleInfo = $entity_bundle_info;
     $this->entityFieldManager = $entity_field_manager;
+    $this->featureTypeFactoryValidator = $feature_type_factory_validator;
   }
 
   public function handle(array $query_params) {
-    // $asset_entity_type = $this->entityTypeManager->getDefinition('asset');
-
-    // dpm($asset_entity_type->id());
-    $requested_type_names = array_filter(explode(',', $query_params['TYPENAME'] ?? ''));
-
-    $asset_bundles = $this->entityTypeBundleInfo->getBundleInfo('asset');
-
-    $unknown_type_names = array_filter($requested_type_names,
-      function ($requested_type_name) use ($asset_bundles) {
-        $matches = [];
-        if (! preg_match(FARMOS_WFS_FEATURE_TYPE_PATTERN, $requested_type_name, $matches)) {
-          return false;
-        }
-
-        $asset_type = $matches['asset_type'];
-
-        if (! in_array($asset_type, $asset_bundles)) {
-          return false;
-        }
-
-        $geometry_type = $matches['geometry_type'];
-
-        if (! in_array($geometry_type, FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES_LOWERCASE_TO_UPPERCASE)) {
-          return false;
-        }
-
-        return true;
-      });
+    $feature_types = [];
+    $unknown_type_names = [];
+    list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_names_to_validated_feature_types(
+      $query_params['TYPENAME'] ?? '');
 
     if (! empty($unknown_type_names)) {
       return farmos_wfs_makeExceptionReport(
@@ -66,21 +47,18 @@ class FarmWfsDescribeFeatureTypeHandler {
         });
     }
 
-    if (empty($requested_type_names)) {
-      $requested_type_names = [];
-      foreach ($asset_bundles as $asset_type => $asset_bundle_info) {
+    if (empty($feature_types)) {
+      $asset_types = array_keys($this->entityTypeBundleInfo->getBundleInfo('asset'));
+
+      foreach ($asset_types as $asset_type) {
         foreach (FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES as $geometry_type) {
-          $requested_type_names[] = implode('.', [
-            'farmos:asset',
-            $asset_type,
-            strtolower($geometry_type)
-          ]);
+          $feature_types[] = new FarmWfsFeatureType($asset_type, strtolower($geometry_type));
         }
       }
     }
 
     return farmos_wfs_makeDoc(
-      function ($doc, $elem) use ($requested_type_names) {
+      function ($doc, $elem) use ($feature_types) {
         $doc->appendChild(
           $elem('xsd:schema',
             array(
@@ -92,7 +70,7 @@ class FarmWfsDescribeFeatureTypeHandler {
               'elementFormDefault' => "qualified",
               'version' => "0.1"
             ),
-            function ($schema, $elem) use ($requested_type_names) {
+            function ($schema, $elem) use ($feature_types) {
 
               $schema->appendChild(
                 $elem('xsd:import',
@@ -101,43 +79,38 @@ class FarmWfsDescribeFeatureTypeHandler {
                     "schemaLocation" => "http://schemas.opengis.net/gml/3.1.1/base/gml.xsd"
                   )));
 
-              foreach ($requested_type_names as $requested_type_name) {
-                $matches = [];
-                preg_match(FARMOS_WFS_FEATURE_TYPE_PATTERN, $requested_type_name, $matches);
-
-                $asset_type = $matches['asset_type'];
-                $geometry_type = $matches['geometry_type'];
+              foreach ($feature_types as $feature_type) {
 
                 $schema->appendChild(
                   $elem('xsd:element',
                     array(
-                      "name" => "asset.{$asset_type}.{$geometry_type}",
-                      "type" => "farmos:asset.{$asset_type}.{$geometry_type}.type",
+                      "name" => $feature_type->unqualifiedTypeName(),
+                      "type" => $feature_type->qualifiedTypeSchemaName(),
                       "substitutionGroup" => "gml:_Feature"
                     )));
 
                 $schema->appendChild(
                   $elem('xsd:complexType', array(
-                    "name" => "asset.{$asset_type}.{$geometry_type}.type"
+                    "name" => $feature_type->unqualifiedTypeSchemaName()
                   ),
-                    function ($complexType, $elem) use ($asset_type, $geometry_type) {
+                    function ($complexType, $elem) use ($feature_type) {
 
                       $complexType->appendChild(
                         $elem('xsd:complexContent', array(),
-                          function ($complexContent, $elem) use ($asset_type, $geometry_type) {
+                          function ($complexContent, $elem) use ($feature_type) {
 
                             $complexContent->appendChild(
                               $elem('xsd:extension', array(
                                 "base" => "gml:AbstractFeatureType"
                               ),
-                                function ($extension, $elem) use ($asset_type, $geometry_type) {
+                                function ($extension, $elem) use ($feature_type) {
 
                                   $extension->appendChild(
                                     $elem('xsd:sequence', array(),
-                                      function ($sequence, $elem) use ($asset_type, $geometry_type) {
+                                      function ($sequence, $elem) use ($feature_type) {
 
                                         $field_definitions = $this->entityFieldManager->getFieldDefinitions('asset',
-                                          $asset_type);
+                                          $feature_type->getAssetType());
 
                                         foreach ($field_definitions as $field_id => $field_definition) {
                                           dpm($field_id . ': ' . $field_definition->getType());
@@ -193,13 +166,11 @@ class FarmWfsDescribeFeatureTypeHandler {
                                           }
                                         }
 
-                                        $geometry_type_name = FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES_LOWERCASE_TO_UPPERCASE[$geometry_type];
-
                                         $sequence->appendChild(
                                           $elem('xsd:element',
                                             array(
                                               "name" => "geometry",
-                                              "type" => "gml:{$geometry_type_name}PropertyType"
+                                              "type" => $feature_type->getGmlGeometryTypeSchemaName()
                                             )));
                                       }));
                                 }));

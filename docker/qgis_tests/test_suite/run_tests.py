@@ -81,12 +81,12 @@ class TestTest(unittest.TestCase):
             "is_field": True,
         })
 
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset.land.point')
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
 
         features = list(vlayer.getFeatures())
 
         north_field_feature = next(
-            iter(filter(lambda f: f.attribute('asset_id') == north_field_id, features)))
+            iter(filter(lambda f: f.attribute('__uuid') == north_field_id, features)))
 
         self.assertEqual(north_field_feature.attribute('name'), "North field")
         self.assertEqual(north_field_feature.attribute(
@@ -452,7 +452,7 @@ class TestTest(unittest.TestCase):
                             'GetCapabilities', 'GetFeature', 'DescribeFeatureType', 'Transaction'})
 
         self.assertSetEqual(set(self.wfs11.contents), {
-                            'farmos:asset.{asset_type}.{geometry_type}'.format(asset_type=asset_type, geometry_type=geometry_type)
+                            'farmos:asset_{asset_type}_{geometry_type}'.format(asset_type=asset_type, geometry_type=geometry_type)
                                 for asset_type in ('animal', 'equipment', 'land', 'plant', 'structure', 'water')
                                 for geometry_type in ('point', 'linestring', 'polygon')
                         })
@@ -460,7 +460,7 @@ class TestTest(unittest.TestCase):
     def test_owslib_land_asset_point_schema(self):
         self.maxDiff = None
 
-        land_asset_point_schema = self.wfs11.get_schema('farmos:asset.land.point')
+        land_asset_point_schema = self.wfs11.get_schema('farmos:asset_land_point')
 
         self.assertDictEqual(land_asset_point_schema, {
             'properties': {

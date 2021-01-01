@@ -23,9 +23,48 @@ services:
      - '@entity_type.manager'
      - '@entity_type.bundle.info'
      - '@entity_field.manager'
+     - '@farmos_wfs.feature_type_factory_validator'
 
   farmos_wfs.get_feature_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsGetFeatureHandler
+    arguments:
+     - '@request_stack'
+     - '@entity_type.manager'
+     - '@entity_type.bundle.info'
+     - '@entity_field.manager'
+     - '@farmos_wfs.feature_type_factory_validator'
+     - '@farmos_wfs.simple_query_resolver'
+     - '@farmos_wfs.filter_query_resolver'
+     - '@farmos_wfs.bbox_query_resolver'
+     - '@asset.location'
 
   farmos_wfs.transaction_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsTransactionHandler
+
+
+  farmos_wfs.feature_type_factory_validator:
+    class: Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator
+    arguments:
+     - '@entity_type.bundle.info'
+
+
+  farmos_wfs.simple_query_resolver:
+    class: Drupal\farmos_wfs\QueryResolver\FarmWfsSimpleQueryResolver
+    arguments:
+     - '@entity_type.manager'
+
+  farmos_wfs.filter_query_resolver:
+    class: Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver
+    arguments:
+     - '@request_stack'
+     - '@entity_type.manager'
+     - '@entity_type.bundle.info'
+     - '@entity_field.manager'
+
+  farmos_wfs.bbox_query_resolver:
+    class: Drupal\farmos_wfs\QueryResolver\FarmWfsBboxQueryResolver
+    arguments:
+     - '@request_stack'
+     - '@entity_type.manager'
+     - '@entity_type.bundle.info'
+     - '@entity_field.manager'

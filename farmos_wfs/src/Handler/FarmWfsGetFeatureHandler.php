@@ -2,6 +2,15 @@
 
 namespace Drupal\farmos_wfs\Handler;
 
+use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\farm_location\AssetLocationInterface;
+use Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator;
+use Drupal\farmos_wfs\QueryResolver\FarmWfsBboxQueryResolver;
+use Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver;
+use Drupal\farmos_wfs\QueryResolver\FarmWfsSimpleQueryResolver;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Geometry;
 
 /**
@@ -9,61 +18,111 @@ use Geometry;
  */
 class FarmWfsGetFeatureHandler {
 
+  protected $requestStack;
+
+  protected $entityTypeManager;
+
+  protected $entityTypeBundleInfo;
+
+  protected $entityFieldManager;
+
+  protected $featureTypeFactoryValidator;
+
+  protected $simpleQueryResolver;
+
+  protected $filterQueryResolver;
+
+  protected $bboxQueryResolver;
+
+  protected $assetLocation;
+
+  public function __construct(RequestStack $request_stack, EntityTypeManagerInterface $entity_type_manager,
+    EntityTypeBundleInfoInterface $entity_bundle_info, EntityFieldManagerInterface $entity_field_manager,
+    FarmWfsFeatureTypeFactoryValidator $feature_type_factory_validator,
+    FarmWfsSimpleQueryResolver $simple_query_resolver, FarmWfsFilterQueryResolver $filter_query_resolver,
+    FarmWfsBboxQueryResolver $bbox_query_resolver, AssetLocationInterface $asset_location) {
+    $this->requestStack = $request_stack;
+    $this->entityTypeManager = $entity_type_manager;
+    $this->entityTypeBundleInfo = $entity_bundle_info;
+    $this->entityFieldManager = $entity_field_manager;
+    $this->featureTypeFactoryValidator = $feature_type_factory_validator;
+
+    $this->simpleQueryResolver = $simple_query_resolver;
+    $this->filterQueryResolver = $filter_query_resolver;
+    $this->bboxQueryResolver = $bbox_query_resolver;
+
+    $this->assetLocation = $asset_location;
+  }
+
   public function handle(array $query_params) {
-    global $base_url;
+    $current_request = $this->requestStack->getCurrentRequest();
 
-    $host = $base_url;
+    $host = $current_request->getSchemeAndHttpHost();
 
-    $requested_type_names = array_filter(explode(',', $query_params['TYPENAME'] ?? ''));
-
-    $unknown_type_names = array_diff_key($requested_type_names, FARMOS_WFS_QUALIFIED_TYPE_NAMES);
+    $feature_types = [];
+    $unknown_type_names = [];
+    list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_names_to_validated_feature_types(
+      $query_params['TYPENAME'] ?? '');
 
     if (! empty($unknown_type_names)) {
-      return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-        $eReport->appendChild($elem('Exception', array(
-          "exceptionCode" => "InvalidParameterValue",
-          "locator" => "typename"
-        )));
-      });
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "InvalidParameterValue",
+              "locator" => "typename"
+            )));
+        });
     }
 
-    if (empty($requested_type_names)) {
-      return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-        $eReport->appendChild($elem('Exception', array(
-          "exceptionCode" => "MissingParameterValue",
-          "locator" => "typename"
-        )));
-      });
+    if (empty($feature_types)) {
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "MissingParameterValue",
+              "locator" => "typename"
+            )));
+        });
     }
 
-    $requested_type_names_by_geofield_geo_type = array();
-
-    foreach ($requested_type_names as $type_name) {
-      $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
-
-      $requested_type_names_by_geofield_geo_type[$geo_type] = $type_name;
+    if (count($feature_types) > 1) {
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "InvalidParameterValue",
+              "locator" => "typename"
+            ),
+              $elem('ExceptionText', [],
+                "GetFeature currently only supports retrieving features from a single feature type")));
+        });
     }
 
-    $requested_geometry_types = array_keys($requested_type_names_by_geofield_geo_type);
+    $feature_type = $feature_types[0];
 
     $bbox = array_filter(explode(',', $query_params['BBOX'] ?? ''));
 
     if (! empty($bbox) && (count($bbox) < 4 || count($bbox) > 5)) {
-      return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-        $eReport->appendChild($elem('Exception', array(
-          "exceptionCode" => "InvalidParameterValue",
-          "locator" => "bbox"
-        )));
-      });
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "InvalidParameterValue",
+              "locator" => "bbox"
+            )));
+        });
     }
 
     if (count($bbox) > 4 && $bbox[4] != 'EPSG:4326') {
-      return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-        $eReport->appendChild($elem('Exception', array(
-          "exceptionCode" => "InvalidParameterValue",
-          "locator" => "bbox"
-        )));
-      });
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "InvalidParameterValue",
+              "locator" => "bbox"
+            )));
+        });
     }
 
     $filter = $query_params['FILTER'] ?? null;
@@ -77,117 +136,203 @@ class FarmWfsGetFeatureHandler {
 
       if (! $filter_doc->documentElement || $filter_doc->documentElement->localName != "Filter") {
 
-        return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-          $eReport->appendChild($elem('Exception', [], $elem('ExceptionText', [], "Could not understand filter parameter: root element must be a Filter")));
-        });
+        return farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) {
+            $eReport->appendChild(
+              $elem('Exception', [],
+                $elem('ExceptionText', [], "Could not understand filter parameter: root element must be a Filter")));
+          });
       }
 
       $filter_elem = $filter_doc->documentElement;
     }
 
     if (! empty($bbox) && $filter_elem) {
-      return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-        $eReport->appendChild($elem('Exception', array(
-          "exceptionCode" => "InvalidParameterValue",
-          "locator" => "filter"
-        ), $elem('ExceptionText', [], "Illegal request; please supply only one of the 'filter' or 'bbox' parameters")));
-      });
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "InvalidParameterValue",
+              "locator" => "filter"
+            ),
+              $elem('ExceptionText', [], "Illegal request; please supply only one of the 'filter' or 'bbox' parameters")));
+        });
     }
 
-    $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids($requested_geometry_types, $filter_elem, $bbox, FARMOS_WFS_EMPTY_FILTER_BEHAVIOR_MATCH_ALL);
+    $asset_type = $feature_type->getAssetType();
+    $geometry_types = [
+      $feature_type->getGeometryType()
+    ];
 
-    $areas = entity_load('taxonomy_term', $area_ids);
+    $asset_ids = [];
+    if (! empty($bbox)) {
+      $asset_ids = $this->bboxQueryResolver->resolve_query($asset_type, $geometry_types, $bbox);
+    } elseif ($filter_elem) {
+      $asset_ids = $this->filterQueryResolver->resolve_query($asset_type, $geometry_types, $filter_elem);
+    } else {
+      $asset_ids = $this->simpleQueryResolver->resolve_query($asset_type, $geometry_types);
+    }
 
-    return farmos_wfs_makeDoc(function ($doc, $elem) use ($host, $query_params, $requested_type_names, $areas, $requested_type_names_by_geofield_geo_type) {
-      $doc->appendChild($elem('wfs:FeatureCollection', array(
-        "xmlns:farmos" => "https://farmos.org/wfs",
-        'xmlns:gml' => "http://www.opengis.net/gml",
-        'xmlns:wfs' => "http://www.opengis.net/wfs",
-        'xmlns:ogc' => "http://www.opengis.net/ogc",
-        'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
-        'xsi:schemaLocation' => "https://farmos.org/wfs " . "$host/wfs?SERVICE=WFS&VERSION=1.1.0&REQUEST=DescribeFeatureType&TYPENAME={$query_params['TYPENAME']}&OUTPUTFORMAT=text/xml;%20subtype=gml/3.1.1 " . "http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd"
-      ), function ($featureCollection, $elem) use ($requested_type_names, $areas, $requested_type_names_by_geofield_geo_type) {
+    ksm($asset_ids);
 
-        $limits = array();
-        $accumulate_limit = function ($source, $edge, $accumulator) use (&$limits) {
-          if (! isset($source[$edge])) {
-            return;
-          }
-          if (! isset($limits[$edge])) {
-            $limits[$edge] = (float) $source[$edge];
-          } else {
-            $limits[$edge] = $accumulator((float) $source[$edge], $limits[$edge]);
-          }
-        };
+    $asset_storage = $this->entityTypeManager->getStorage('asset');
 
-        foreach ($areas as $area) {
+    $assets = $asset_storage->loadMultiple($asset_ids);
 
-          $geofield = $area->field_farm_geofield[LANGUAGE_NONE][0];
+    ksm($assets);
 
-          $geo_type = $geofield['geo_type'];
-          $type_name = $requested_type_names_by_geofield_geo_type[$geo_type];
+    return farmos_wfs_makeDoc(
+      function ($doc, $elem) use ($host, $query_params, $feature_type, $assets) {
+        $doc->appendChild(
+          $elem('wfs:FeatureCollection',
+            array(
+              "xmlns:farmos" => "https://farmos.org/wfs",
+              'xmlns:gml' => "http://www.opengis.net/gml",
+              'xmlns:wfs' => "http://www.opengis.net/wfs",
+              'xmlns:ogc' => "http://www.opengis.net/ogc",
+              'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
+              'xsi:schemaLocation' => "https://farmos.org/wfs " .
+              "$host/wfs?SERVICE=WFS&VERSION=1.1.0&REQUEST=DescribeFeatureType&TYPENAME={$query_params['TYPENAME']}&OUTPUTFORMAT=text/xml;%20subtype=gml/3.1.1 " .
+              "http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd"
+            ),
+            function ($featureCollection, $elem) use ($feature_type, $assets) {
 
-          $geometry_type = preg_replace('/^farmos:(.*)Area$/', '$1', $type_name);
+              $limits = array();
+              $accumulate_limit = function ($source, $edge, $accumulator) use (&$limits) {
+                if (! isset($source[$edge])) {
+                  return;
+                }
+                if (! isset($limits[$edge])) {
+                  $limits[$edge] = (float) $source[$edge];
+                } else {
+                  $limits[$edge] = $accumulator((float) $source[$edge], $limits[$edge]);
+                }
+              };
 
-          // Get WKT from the field. If empty, bail.
-          if (empty($geofield['geom'])) {
-            continue;
-          }
+              foreach ($assets as $asset) {
 
-          $wkt = $geofield['geom'];
+                $wkt = $this->assetLocation->getGeometry($asset);
 
-          geophp_load();
-          $geom = geoPHP::load($wkt, 'wkt');
+                // Get WKT from the field. If empty, bail.
+                if (empty($wkt)) {
+                  continue;
+                }
 
-          // If the geometry is empty, bail.
-          if ($geom->isEmpty()) {
-            continue;
-          }
+                $geom = \geoPHP::load($wkt, 'wkt');
 
-          $accumulate_limit($geofield, 'left', 'min');
-          $accumulate_limit($geofield, 'bottom', 'min');
-          $accumulate_limit($geofield, 'top', 'max');
-          $accumulate_limit($geofield, 'right', 'max');
+                ksm($geom);
 
-          $featureCollection->appendChild($elem('gml:featureMember', [], function ($featureMember, $elem) use ($area, $geometry_type, $geofield, $geom) {
+                $geometry_type = $geom->geometryType();
 
-            $featureMember->appendChild($elem("farmos:{$geometry_type}Area", array(
-              'gml:id' => "{$geometry_type}Area.{$area->tid}"
-            ), function ($feature, $elem) use ($area, $geofield, $geom) {
+                // If the geometry is empty, bail.
+                if ($geom->isEmpty()) {
+                  continue;
+                }
 
-              $feature->appendChild(gml_bounded_by($geofield, $elem));
+                $bbox = $geom->getBBox();
 
-              $feature->appendChild($elem('farmos:geometry', [], function ($geometry, $elem) use ($area, $geom) {
+                $accumulate_limit($bbox, 'minx', 'min');
+                $accumulate_limit($bbox, 'miny', 'min');
+                $accumulate_limit($bbox, 'maxy', 'max');
+                $accumulate_limit($bbox, 'maxx', 'max');
 
-                $geometry->appendChild(geophp_to_gml_three_point_one_point_one($geom, $elem));
-              }));
+                $featureCollection->appendChild(
+                  $elem('gml:featureMember', [],
+                    function ($featureMember, $elem) use ($feature_type, $asset, $geometry_type, $geom, $bbox) {
 
-              $feature->appendChild($elem('farmos:area_id', [], "{$area->tid}"));
-              $feature->appendChild($elem('farmos:name', [], $area->name));
-              $feature->appendChild($elem('farmos:area_type', [], ($area->field_farm_area_type[LANGUAGE_NONE][0]['value'] ?? '')));
-              $feature->appendChild($elem('farmos:description', [], $area->description));
+                      $featureMember->appendChild(
+                        $elem($feature_type->qualifiedTypeName(),
+                          array(
+                            'gml:id' => "{$feature_type->unqualifiedTypeName()}.{$asset->uuid()}"
+                          ),
+                          function ($feature, $elem) use ($asset, $geom, $bbox) {
+
+                            $feature->appendChild(gml_bounded_by($bbox, $elem));
+
+                            $feature->appendChild(
+                              $elem('farmos:geometry', [],
+                                function ($geometry, $elem) use ($asset, $geom) {
+
+                                  $geometry->appendChild(geophp_to_gml_three_point_one_point_one($geom, $elem));
+                                }));
+
+                            $field_definitions = $asset->getFieldDefinitions();
+
+                            ksm($field_definitions);
+
+                            // $feature->appendChild($elem('farmos:area_id', [], "{$asset->uuid()}"));
+                            // $feature->appendChild($elem('farmos:name', [], $asset->getName()));
+                            // $feature->appendChild(
+                            // $elem('farmos:area_type', [],
+                            // ($area->field_farm_area_type[LANGUAGE_NONE][0]['value'] ?? '')));
+                            // $feature->appendChild($elem('farmos:description', [], $area->description));
+
+                            foreach ($field_definitions as $field_id => $field_definition) {
+                              // dpm($field_id . ': ' . $field_definition->getType());
+
+                              $field_type = $field_definition->getType();
+
+                              $supported_field_types = [
+                                'string',
+                                'text_long',
+                                'timestamp',
+                                'boolean',
+                                'uuid',
+                                'list_string',
+                                'string_long',
+                                'integer',
+                              ];
+
+                              if (in_array($field_type, $supported_field_types)) {
+
+                                if ($field_definition->isReadOnly()) {
+                                  $property_name = 'farmos:__' . $field_id;
+                                } else {
+                                  $property_name = 'farmos:' . $field_id;
+                                }
+
+                                $field_data = $asset->get($field_id);
+
+                                if ($field_data->isEmpty()) {
+                                  continue;
+                                }
+
+                                $first_field_datum = $field_data->first();
+
+                                if (! $first_field_datum) {
+                                  continue;
+                                }
+
+                                $property_value = $first_field_datum->getValue()['value'];
+
+                                $feature->appendChild($elem($property_name, [], $property_value));
+                              }
+                            }
+                          }));
+                    }));
+              }
+
+              if (! empty($limits)) {
+                $featureCollection->appendChild(gml_bounded_by($limits, $elem));
+              }
             }));
-          }));
-        }
-
-        if (! empty($limits)) {
-          $featureCollection->appendChild(gml_bounded_by($limits, $elem));
-        }
-      }));
-    });
+      });
   }
 }
 
 function gml_bounded_by($limits, $elem) {
-  return $elem('gml:boundedBy', [], function ($boundedBy, $elem) use ($limits) {
+  return $elem('gml:boundedBy', [],
+    function ($boundedBy, $elem) use ($limits) {
 
-    $boundedBy->appendChild($elem('gml:Envelope', array(
-      'srsName' => FARMOS_WFS_DEFAULT_CRS
-    ), function ($envelope, $elem) use ($limits) {
-      $envelope->appendChild($elem('gml:lowerCorner', [], "{$limits['left']} {$limits['bottom']}"));
-      $envelope->appendChild($elem('gml:upperCorner', [], "{$limits['right']} {$limits['top']}"));
-    }));
-  });
+      $boundedBy->appendChild(
+        $elem('gml:Envelope', array(
+          'srsName' => FARMOS_WFS_DEFAULT_CRS
+        ),
+          function ($envelope, $elem) use ($limits) {
+            $envelope->appendChild($elem('gml:lowerCorner', [], "{$limits['minx']} {$limits['miny']}"));
+            $envelope->appendChild($elem('gml:upperCorner', [], "{$limits['maxx']} {$limits['maxy']}"));
+          }));
+    });
 }
 
 function geophp_to_gml_three_point_one_point_one(Geometry $geometry, $elem) {
@@ -197,57 +342,71 @@ function geophp_to_gml_three_point_one_point_one(Geometry $geometry, $elem) {
 
       return $elem('gml:Point', array(
         'srsName' => FARMOS_WFS_DEFAULT_CRS
-      ), function ($point, $elem) use ($geometry) {
+      ),
+        function ($point, $elem) use ($geometry) {
 
-        $point->appendChild($elem('gml:pos', array(
-          'srsDimension' => '2'
-        ), function ($pos, $elem) use ($geometry) {
+          $point->appendChild(
+            $elem('gml:pos', array(
+              'srsDimension' => '2'
+            ), function ($pos, $elem) use ($geometry) {
 
-          $pos->nodeValue = $geometry->getX() . ' ' . $geometry->getY();
-        }));
-      });
+              $pos->nodeValue = $geometry->getX() . ' ' . $geometry->getY();
+            }));
+        });
     case 'LineString':
 
       return $elem('gml:LineString', array(
         'srsName' => FARMOS_WFS_DEFAULT_CRS
-      ), function ($lineString, $elem) use ($geometry) {
+      ),
+        function ($lineString, $elem) use ($geometry) {
 
-        $lineString->appendChild($elem('gml:posList', array(
-          'srsDimension' => '2'
-        ), function ($posList, $elem) use ($geometry) {
+          $lineString->appendChild(
+            $elem('gml:posList', array(
+              'srsDimension' => '2'
+            ),
+              function ($posList, $elem) use ($geometry) {
 
-          $posList->nodeValue = implode(' ', array_map(function ($point) {
-            return $point->getX() . ' ' . $point->getY();
-          }, $geometry->getPoints()));
-        }));
-      });
+                $posList->nodeValue = implode(' ',
+                  array_map(function ($point) {
+                    return $point->getX() . ' ' . $point->getY();
+                  }, $geometry->getPoints()));
+              }));
+        });
 
     case 'Polygon':
 
       return $elem('gml:Polygon', array(
         'srsName' => FARMOS_WFS_DEFAULT_CRS
-      ), function ($polygon, $elem) use ($geometry) {
+      ),
+        function ($polygon, $elem) use ($geometry) {
 
-        foreach ($geometry->getComponents() as $ringIdx => $ring) {
+          foreach ($geometry->getComponents() as $ringIdx => $ring) {
 
-          $polygon->appendChild($elem($ringIdx == 0 ? 'gml:exterior' : 'gml:interior', [], function ($surface, $elem) use ($ring) {
+            $polygon->appendChild(
+              $elem($ringIdx == 0 ? 'gml:exterior' : 'gml:interior', [],
+                function ($surface, $elem) use ($ring) {
 
-            $surface->appendChild($elem('gml:LinearRing', [], function ($linearRing, $elem) use ($ring) {
+                  $surface->appendChild(
+                    $elem('gml:LinearRing', [],
+                      function ($linearRing, $elem) use ($ring) {
 
-              $linearRing->appendChild($elem('gml:posList', array(
-                'srsDimension' => '2'
-              ), function ($posList, $elem) use ($ring) {
+                        $linearRing->appendChild(
+                          $elem('gml:posList', array(
+                            'srsDimension' => '2'
+                          ),
+                            function ($posList, $elem) use ($ring) {
 
-                $posList->nodeValue = implode(' ', array_map(function ($point) {
-                  return $point->getX() . ' ' . $point->getY();
-                }, $ring->getPoints()));
-              }));
-            }));
-          }));
-        }
-      });
+                              $posList->nodeValue = implode(' ',
+                                array_map(function ($point) {
+                                  return $point->getX() . ' ' . $point->getY();
+                                }, $ring->getPoints()));
+                            }));
+                      }));
+                }));
+          }
+        });
 
     default:
-      throw new Exception("Unsupported geometry type: {$geometry->geometryType()}");
+      throw new \Exception("Unsupported geometry type: {$geometry->geometryType()}");
   }
 }

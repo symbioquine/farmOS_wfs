@@ -6,6 +6,7 @@ use Drupal\Component\Utility\Xss;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfo;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\farmos_wfs\FarmWfsFeatureType;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -215,18 +216,14 @@ class FarmWfsGetCapabilitiesHandler {
                     foreach ($asset_bundles as $asset_type => $asset_bundle_info) {
                       foreach (FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES as $geometry_type) {
 
-                        $type_name = implode('.', [
-                          'farmos:asset',
-                          $asset_type,
-                          strtolower($geometry_type)
-                        ]);
+                        $feature_type = new FarmWfsFeatureType($asset_type, strtolower($geometry_type));
 
                         $featureTypeList->appendChild(
                           $elem('wfs:FeatureType', [],
-                            function ($featureType, $elem) use ($type_name, $asset_bundle_info, $geometry_type) {
-                              $featureType->appendChild($elem('wfs:Name', [], $type_name));
+                            function ($featureType, $elem) use ($feature_type, $asset_bundle_info) {
+                              $featureType->appendChild($elem('wfs:Name', [], $feature_type->qualifiedTypeName()));
 
-                              $geometry_type_name_parts = preg_split('/(?=[A-Z])/', $geometry_type);
+                              $geometry_type_name_parts = preg_split('/(?=[A-Z])/', $feature_type->getGeometryTypeName());
 
                               $geometry_type_name_title_case = implode(' ', $geometry_type_name_parts);
 
