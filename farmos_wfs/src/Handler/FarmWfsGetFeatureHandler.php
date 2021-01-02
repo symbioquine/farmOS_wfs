@@ -173,13 +173,9 @@ class FarmWfsGetFeatureHandler {
       $asset_ids = $this->simpleQueryResolver->resolve_query($asset_type, $geometry_types);
     }
 
-    ksm($asset_ids);
-
     $asset_storage = $this->entityTypeManager->getStorage('asset');
 
     $assets = $asset_storage->loadMultiple($asset_ids);
-
-    ksm($assets);
 
     return farmos_wfs_makeDoc(
       function ($doc, $elem) use ($host, $query_params, $feature_type, $assets) {
@@ -220,10 +216,6 @@ class FarmWfsGetFeatureHandler {
 
                 $geom = \geoPHP::load($wkt, 'wkt');
 
-                ksm($geom);
-
-                $geometry_type = $geom->geometryType();
-
                 // If the geometry is empty, bail.
                 if ($geom->isEmpty()) {
                   continue;
@@ -238,7 +230,7 @@ class FarmWfsGetFeatureHandler {
 
                 $featureCollection->appendChild(
                   $elem('gml:featureMember', [],
-                    function ($featureMember, $elem) use ($feature_type, $asset, $geometry_type, $geom, $bbox) {
+                    function ($featureMember, $elem) use ($feature_type, $asset, $geom, $bbox) {
 
                       $featureMember->appendChild(
                         $elem($feature_type->qualifiedTypeName(),
@@ -258,17 +250,7 @@ class FarmWfsGetFeatureHandler {
 
                             $field_definitions = $asset->getFieldDefinitions();
 
-                            ksm($field_definitions);
-
-                            // $feature->appendChild($elem('farmos:area_id', [], "{$asset->uuid()}"));
-                            // $feature->appendChild($elem('farmos:name', [], $asset->getName()));
-                            // $feature->appendChild(
-                            // $elem('farmos:area_type', [],
-                            // ($area->field_farm_area_type[LANGUAGE_NONE][0]['value'] ?? '')));
-                            // $feature->appendChild($elem('farmos:description', [], $area->description));
-
                             foreach ($field_definitions as $field_id => $field_definition) {
-                              // dpm($field_id . ': ' . $field_definition->getType());
 
                               $field_type = $field_definition->getType();
 

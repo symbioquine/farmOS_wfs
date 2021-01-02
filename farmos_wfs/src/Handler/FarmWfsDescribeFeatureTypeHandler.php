@@ -113,7 +113,6 @@ class FarmWfsDescribeFeatureTypeHandler {
                                           $feature_type->getAssetType());
 
                                         foreach ($field_definitions as $field_id => $field_definition) {
-                                          dpm($field_id . ': ' . $field_definition->getType());
 
                                           $field_type = $field_definition->getType();
 
