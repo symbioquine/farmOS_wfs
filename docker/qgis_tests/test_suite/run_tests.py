@@ -95,61 +95,61 @@ class TestTest(unittest.TestCase):
         self.assertEqual(north_field_feature.geometry().asJson(
         ), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
 
-    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_get_line_string_features(self):
-        forty_ninth_parallel_id = self.create_area_entity({
-            "vocabulary": "3",
+        forty_ninth_parallel_id = self.create_asset('land', {
             "name": "49th Parallel",
-            "description": "Another sample description... [created by farmOS_wfs-qgis_tests]",
-            "area_type": "landmark",
-            "geofield": [
-                    {
-                        "geom": "LINESTRING(-125.75 49,-53.833333 49)",
-                    },
-            ],
+            "notes": {
+                "value": "Another sample description... [created by farmOS_wfs-qgis_tests]",
+            },
+            "intrinsic_geometry": {
+                "value": "LINESTRING(-125.75 49,-53.833333 49)",
+            },
+            "land_type": "landmark",
+            "is_location": True,
+            "is_fixed": True,
         })
 
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_linestring')
 
         features = list(vlayer.getFeatures())
 
         forty_ninth_parallel_feature = next(iter(filter(lambda f: f.attribute(
-            'area_id') == forty_ninth_parallel_id, features)))
+            '__uuid') == forty_ninth_parallel_id, features)))
 
         self.assertEqual(forty_ninth_parallel_feature.attribute(
             'name'), "49th Parallel")
         self.assertEqual(forty_ninth_parallel_feature.attribute(
-            'description'), "Another sample description... [created by farmOS_wfs-qgis_tests]")
+            'notes'), "Another sample description... [created by farmOS_wfs-qgis_tests]")
         self.assertEqual(forty_ninth_parallel_feature.attribute(
-            'area_type'), "landmark")
+            'land_type'), "landmark")
         self.assertEqual(forty_ninth_parallel_feature.geometry().asJson(
         ), '{"coordinates":[[-125.75,49.0],[-53.833333,49.0]],"type":"LineString"}')
 
-    @unittest.skip("Not yet updated for 2.x")
     def test_qgis_get_polygon_features(self):
-        colorado_id = self.create_area_entity({
-            "vocabulary": "3",
+        colorado_id = self.create_asset('land', {
             "name": "Colorado",
-            "description": "Yet another sample description... [created by farmOS_wfs-qgis_tests]",
-            "area_type": "property",
-            "geofield": [
-                    {
-                        "geom": "POLYGON((-109.0448 37.0004,-102.0424 36.9949,-102.0534 41.0006,-109.0489 40.9996,-109.0448 37.0004,-109.0448 37.0004))",
-                    },
-            ],
+            "notes": {
+                "value": "Yet another sample description... [created by farmOS_wfs-qgis_tests]",
+            },
+            "intrinsic_geometry": {
+                "value": "POLYGON((-109.0448 37.0004,-102.0424 36.9949,-102.0534 41.0006,-109.0489 40.9996,-109.0448 37.0004,-109.0448 37.0004))",
+            },
+            "land_type": "property",
+            "is_location": True,
+            "is_fixed": True,
         })
 
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_polygon')
 
         features = list(vlayer.getFeatures())
 
         colorado_feature = next(
-            iter(filter(lambda f: f.attribute('area_id') == colorado_id, features)))
+            iter(filter(lambda f: f.attribute('__uuid') == colorado_id, features)))
 
         self.assertEqual(colorado_feature.attribute('name'), "Colorado")
         self.assertEqual(colorado_feature.attribute(
-            'description'), "Yet another sample description... [created by farmOS_wfs-qgis_tests]")
-        self.assertEqual(colorado_feature.attribute('area_type'), "property")
+            'notes'), "Yet another sample description... [created by farmOS_wfs-qgis_tests]")
+        self.assertEqual(colorado_feature.attribute('land_type'), "property")
         self.assertEqual(colorado_feature.geometry().asJson(
         ), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
 
@@ -452,15 +452,17 @@ class TestTest(unittest.TestCase):
                             'GetCapabilities', 'GetFeature', 'DescribeFeatureType', 'Transaction'})
 
         self.assertSetEqual(set(self.wfs11.contents), {
-                            'farmos:asset_{asset_type}_{geometry_type}'.format(asset_type=asset_type, geometry_type=geometry_type)
-                                for asset_type in ('animal', 'equipment', 'land', 'plant', 'structure', 'water')
-                                for geometry_type in ('point', 'linestring', 'polygon')
-                        })
+                            'farmos:asset_{asset_type}_{geometry_type}'.format(
+                                asset_type=asset_type, geometry_type=geometry_type)
+                            for asset_type in ('animal', 'equipment', 'land', 'plant', 'structure', 'water')
+                            for geometry_type in ('point', 'linestring', 'polygon')
+                            })
 
     def test_owslib_land_asset_point_schema(self):
         self.maxDiff = None
 
-        land_asset_point_schema = self.wfs11.get_schema('farmos:asset_land_point')
+        land_asset_point_schema = self.wfs11.get_schema(
+            'farmos:asset_land_point')
 
         self.assertDictEqual(land_asset_point_schema, {
             'properties': {
@@ -485,35 +487,58 @@ class TestTest(unittest.TestCase):
             'geometry_column': 'geometry',
         })
 
-    @unittest.skip("Not yet updated for 2.x")
-    def test_owslib_line_string_area(self):
-        line_string_area_schema = self.wfs11.get_schema(
-            'farmos:LineStringArea')
+    def test_owslib_water_asset_line_string_schema(self):
+        self.maxDiff = None
 
-        self.assertDictEqual(line_string_area_schema, {
+        water_asset_line_string_schema = self.wfs11.get_schema(
+            'farmos:asset_water_linestring')
+
+        self.assertDictEqual(water_asset_line_string_schema, {
             'properties': {
-                'area_id': 'string',
+                '__id': 'integer',
+                '__uuid': 'string',
+                '__revision_id': 'integer',
+                '__revision_translation_affected': 'boolean',
                 'name': 'string',
-                'area_type': 'string',
-                'description': 'string'
+                'data': 'string',
+                'notes': 'string',
+                'is_fixed': 'boolean',
+                'is_location': 'boolean',
+                'archived': 'dateTime',
+                'flag': 'string',
+                'default_langcode': 'boolean',
+                'revision_default': 'boolean',
+                'revision_log_message': 'string',
             },
-            'required': ['geometry', 'name'],
+            'required': ['name', 'geometry'],
             'geometry': 'LineString',
             'geometry_column': 'geometry',
         })
 
-    @unittest.skip("Not yet updated for 2.x")
-    def test_owslib_polygon_area(self):
-        polygon_area_schema = self.wfs11.get_schema('farmos:PolygonArea')
+    def test_owslib_structure_asset_polygon_schema(self):
+        self.maxDiff = None
 
-        self.assertDictEqual(polygon_area_schema, {
+        structure_asset_polygon_schema = self.wfs11.get_schema('farmos:asset_structure_polygon')
+
+        self.assertDictEqual(structure_asset_polygon_schema, {
             'properties': {
-                'area_id': 'string',
+                '__id': 'integer',
+                '__uuid': 'string',
+                '__revision_id': 'integer',
+                '__revision_translation_affected': 'boolean',
                 'name': 'string',
-                'area_type': 'string',
-                'description': 'string'
+                'data': 'string',
+                'structure_type': 'string',
+                'notes': 'string',
+                'is_fixed': 'boolean',
+                'is_location': 'boolean',
+                'archived': 'dateTime',
+                'flag': 'string',
+                'default_langcode': 'boolean',
+                'revision_default': 'boolean',
+                'revision_log_message': 'string',
             },
-            'required': ['geometry', 'name'],
+            'required': ['name', 'structure_type', 'geometry'],
             'geometry': 'Polygon',
             'geometry_column': 'geometry',
         })
