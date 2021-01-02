@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Run 7.x-1.x tests
+    name: Run 2.x tests
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout the repository
