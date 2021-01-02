@@ -33,7 +33,7 @@ class FarmWfsDescribeFeatureTypeHandler {
   public function handle(array $query_params) {
     $feature_types = [];
     $unknown_type_names = [];
-    list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_names_to_validated_feature_types(
+    list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_names_string_to_validated_feature_types(
       $query_params['TYPENAME'] ?? '');
 
     if (! empty($unknown_type_names)) {

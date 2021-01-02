@@ -1,4 +1,4 @@
-name: Run 2.x PHPUnit tests
+name: Run 2.x tests
 on:
   push:
     branches:
@@ -7,35 +7,16 @@ on:
 
 jobs:
   build:
-    name: Run PHPUnit tests
-    runs-on: ubuntu-latest
+    name: Run 7.x-1.x tests
+    runs-on: ubuntu-20.04
     steps:
-      - name: Create docker-compose.yml
-        run: curl https://raw.githubusercontent.com/farmOS/farmOS/2.x/docker/docker-compose.testing.yml -o docker-compose.yml
-      - name: Start containers
-        run: docker-compose up -d
-      - name: Wait until test-runner container is ready
-        # The test-runner-container-fs-ready file is only created once we expect the containers to be online
-        # so waiting for that lets us know it is safe to start the tests
-        run: until [ -f ./www/test-runner-container-fs-ready ]; do sleep 0.1; done
       - name: Checkout the repository
         uses: actions/checkout@v2
-        with:
-          path: farmos_wfs
-      - name: Move module into codebase.
-        run: sudo mv farmos_wfs www/farmos_wfs
-      - name: Add local repository to composer.json.
-        run: >-
-          docker-compose exec -u www-data -T www composer config repositories.farmos_wfs '{"type": "path", "url": "farmos_wfs"}'
-      - name: Require farm_wfs module and dependencies via Composer.
-        run: docker-compose exec -u www-data -T www composer require symbioquine/farmos_wfs
-      - name: Change ownership of codebase to Apache.
-        run: sudo chown -R www-data:www-data www
-      - name: Run PHPUnit tests
-        run: docker-compose exec -u www-data -T --env SYMFONY_DEPRECATIONS_HELPER=weak test-runner phpunit --verbose --debug --group farmos_wfs
-      - name: Run PHP CodeSniffer
-        run: docker-compose exec -u www-data -T www phpcs /opt/drupal/web/modules/contrib/farmos_wfs
-      - uses: actions/upload-artifact@v2
-        with:
-          name: phpunit-browser-output
-          path: ./www/web/sites/simpletest/browser_output/**/*
+      - name: Build QGIS Test Harness Docker image
+        run: docker build -t qgis_test_harness docker/qgis_test_harness
+      - name: Start containers
+        run: docker-compose --file ./docker/docker-compose.yml up -d
+      - name: Wait until www container is ready
+        run: until [ -f ./docker/www/www-container-fs-ready ]; do sleep 0.1; done
+      - name: Run QGIS tests
+        run: docker run --rm --name qgis --network=docker_default -v $(pwd)'/docker/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests

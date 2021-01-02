@@ -36,6 +36,9 @@ const FARMOS_WFS_EMPTY_FILTER_BEHAVIOR_MATCH_ALL = 'match_all';
 
 const FARMOS_WFS_EMPTY_FILTER_BEHAVIOR_MATCH_NONE = 'match_none';
 
+// Here be hacks... beware! Unclear why this is needed
+require_once '../vendor/phayes/geophp/geoPHP.inc';
+
 function farmos_wfs_makeDoc($declarator) {
   $xml = new DomDocument('1.0', 'UTF-8');
 

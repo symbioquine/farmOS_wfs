@@ -12,9 +12,19 @@ class FarmWfsFeatureTypeFactoryValidator {
     $this->entityTypeBundleInfo = $entity_bundle_info;
   }
 
-  public function type_names_to_validated_feature_types(string $type_names) {
+  public function type_name_to_validated_feature_types(string $type_name) {
+    return $this->type_names_to_validated_feature_types([
+      $type_name
+    ]);
+  }
+
+  public function type_names_string_to_validated_feature_types(string $type_names) {
     $requested_type_names = array_filter(explode(',', $type_names));
 
+    return $this->type_names_to_validated_feature_types($requested_type_names);
+  }
+
+  public function type_names_to_validated_feature_types(array $requested_type_names) {
     $asset_bundles = array_keys($this->entityTypeBundleInfo->getBundleInfo('asset'));
 
     $feature_types = [];

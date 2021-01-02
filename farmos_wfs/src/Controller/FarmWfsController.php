@@ -4,6 +4,7 @@ namespace Drupal\farmos_wfs\Controller;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\farmos_wfs\Handler\FarmWfsDescribeFeatureTypeHandler;
 use Drupal\farmos_wfs\Handler\FarmWfsGetCapabilitiesHandler;
 use Drupal\farmos_wfs\Handler\FarmWfsGetFeatureHandler;
@@ -30,6 +31,13 @@ class FarmWfsController extends ControllerBase {
    * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
   protected $configFactory;
+
+  /**
+   * The current user.
+   *
+   * @var \Drupal\Core\Session\AccountProxyInterface
+   */
+  protected $currentUser;
 
   /**
    * The GetCapabilities handler
@@ -69,10 +77,12 @@ class FarmWfsController extends ControllerBase {
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    */
   public function __construct(RequestStack $request_stack, ConfigFactoryInterface $config_factory,
-    FarmWfsGetCapabilitiesHandler $getCapabilitiesHandler, FarmWfsDescribeFeatureTypeHandler $describeFeatureTypeHandler,
-    FarmWfsGetFeatureHandler $getFeatureHandler, FarmWfsTransactionHandler $transactionHandler) {
+    AccountProxyInterface $currentUser, FarmWfsGetCapabilitiesHandler $getCapabilitiesHandler,
+    FarmWfsDescribeFeatureTypeHandler $describeFeatureTypeHandler, FarmWfsGetFeatureHandler $getFeatureHandler,
+    FarmWfsTransactionHandler $transactionHandler) {
     $this->requestStack = $request_stack;
     $this->configFactory = $config_factory;
+    $this->currentUser = $currentUser;
 
     $this->getCapabilitiesHandler = $getCapabilitiesHandler;
     $this->describeFeatureTypeHandler = $describeFeatureTypeHandler;
@@ -148,7 +158,7 @@ class FarmWfsController extends ControllerBase {
     }
 
     if ($requested_operation == "Transaction" || $request_method == "POST") {
-      if (! user_access('Administer assets')) {
+      if (! $this->currentUser->hasPermission('Administer assets')) {
 
         return farmos_wfs_makeExceptionReport(
           function ($eReport, $elem) {
@@ -178,7 +188,7 @@ class FarmWfsController extends ControllerBase {
           });
       }
 
-      return $this->transactionHandler($query_params, $doc->firstChild);
+      return $this->transactionHandler->handle($query_params, $doc->firstChild);
     }
 
     return farmos_wfs_makeExceptionReport(

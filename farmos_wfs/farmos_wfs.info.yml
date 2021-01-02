@@ -3,3 +3,8 @@ description: Provides a WFS endpoint for farmOS
 type: module
 package: farmOS Contrib
 core_version_requirement: ^9
+dependencies:
+  - drupal:views
+  - farm:farm_field
+  - farm:farm_log
+  - geofield:geofield

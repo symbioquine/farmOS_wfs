@@ -153,16 +153,15 @@ class TestTest(unittest.TestCase):
         self.assertEqual(colorado_feature.geometry().asJson(
         ), '{"coordinates":[[[-109.0448,37.0004],[-102.0424,36.9949],[-102.0534,41.0006],[-109.0489,40.9996],[-109.0448,37.0004],[-109.0448,37.0004]]],"type":"Polygon"}')
 
-    @unittest.skip("Not yet updated for 2.x")
-    def test_qgis_create_point_feature(self):
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
+    def test_qgis_create_point_land_asset(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
 
         with edit(vlayer):
             f = QgsFeature(vlayer.fields())
             f.setAttribute("name", "Example point")
-            f.setAttribute("area_type", "building")
+            f.setAttribute("land_type", "other")
             f.setAttribute(
-                "description", "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
+                "notes", "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
             f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10, 10)))
 
             vlayer.addFeature(f)
@@ -172,29 +171,32 @@ class TestTest(unittest.TestCase):
         features = list(vlayer.getFeatures())
 
         created_feature = next(iter(filter(
-            lambda f: 'Description for point created via WFS from QGIS' in f.attribute('description'), features)))
+            lambda f: 'Description for point created via WFS from QGIS' in str(f.attribute('notes')), features)))
 
-        created_area_id = created_feature.attribute('area_id')
+        created_area_id = created_feature.attribute('__uuid')
 
-        area = self.get_area_entity_by_id(created_area_id)
+        asset = self.get_asset_by_type_and_id('land', created_area_id)
 
-        self.assertEqual(area['name'], "Example point")
-        self.assertEqual(area['area_type'], "building")
+        self.assertEqual(asset['attributes']['name'], "Example point")
+        self.assertEqual(asset['attributes']['land_type'], "other")
         # The Drupal entity API adds some markup around our description so just
         # assert that the description is a substring of it
         self.assertIn(
-            "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", area['description'])
-        self.assertEqual(area['geofield'][0]['geom'], 'POINT (10 10)')
+            "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
+        self.assertEqual(asset['attributes']['geometry']
+                         ['value'], 'POINT (10 10)')
 
-    @unittest.skip("Not yet updated for 2.x")
-    def test_qgis_create_feature_with_unknown_area_type(self):
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
+    @unittest.skip("Test updated, but not yet implemented in 2.x branch")
+    def test_qgis_create_land_asset_with_unknown_land_type(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
 
         with self.assertRaises(QgsEditError):
             with edit(vlayer):
                 f = QgsFeature(vlayer.fields())
                 f.setAttribute("name", "Example point of unknown type")
-                f.setAttribute("area_type", "somethingunknown")
+                f.setAttribute("land_type", "somethingunknown")
+                f.setAttribute(
+                    "notes", "Description for point that shouldn't be created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
                 f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10, 10)))
 
                 vlayer.addFeature(f)
@@ -518,7 +520,8 @@ class TestTest(unittest.TestCase):
     def test_owslib_structure_asset_polygon_schema(self):
         self.maxDiff = None
 
-        structure_asset_polygon_schema = self.wfs11.get_schema('farmos:asset_structure_polygon')
+        structure_asset_polygon_schema = self.wfs11.get_schema(
+            'farmos:asset_structure_polygon')
 
         self.assertDictEqual(structure_asset_polygon_schema, {
             'properties': {
@@ -559,18 +562,16 @@ class TestTest(unittest.TestCase):
 
         return vlayer
 
-    def get_area_entity_by_id(self, area_id):
-        self.assertIsInstance(area_id, str)
-        self.assertTrue(area_id.isnumeric(),
-                        "area_id.isnumeric()")
+    def get_asset_by_type_and_id(self, asset_type, asset_id):
+        self.assertIsInstance(asset_id, str)
 
         with self.requests_session() as s:
-            area_response = s.get(
-                "http://www/taxonomy_term/{}.json".format(area_id))
+            asset_response = s.get(
+                "http://www/api/asset/{}/{}".format(asset_type, asset_id))
 
-        self.assertTrue(area_response.ok)
+        self.assertTrue(asset_response.ok)
 
-        return area_response.json()
+        return asset_response.json()['data']
 
     def create_asset(self, asset_type, asset_attributes):
         with self.requests_session() as s:

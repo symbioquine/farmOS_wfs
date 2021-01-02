@@ -2,21 +2,45 @@
 
 namespace Drupal\farmos_wfs\Handler;
 
+use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\asset\Entity\Asset;
+use Drupal\farmos_wfs\FarmWfsFeatureType;
+use Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator;
+use Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver;
+use function Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver\farmos_wfs_ogc_filter_one_point_one_to_area_ids;
+
 /**
  * Defines FarmWfsGetFeatureHandler class.
  */
 class FarmWfsTransactionHandler {
 
-  public function handle(array $query_params, $transaction_elem) {
+  protected $entityTypeManager;
+
+  protected $entityFieldManager;
+
+  protected $featureTypeFactoryValidator;
+
+  protected $filterQueryResolver;
+
+  public function __construct(EntityTypeManagerInterface $entity_type_manager,
+    EntityFieldManagerInterface $entity_field_manager,
+    FarmWfsFeatureTypeFactoryValidator $feature_type_factory_validator,
+    FarmWfsFilterQueryResolver $filter_query_resolver) {
+    $this->entityTypeManager = $entity_type_manager;
+    $this->entityFieldManager = $entity_field_manager;
+    $this->featureTypeFactoryValidator = $feature_type_factory_validator;
+    $this->filterQueryResolver = $filter_query_resolver;
+  }
+
+  public function handle(array $query_params, \DOMElement $transaction_elem) {
     $action_handlers = array(
-      'Insert' => 'handle_wfs_transaction_insert_action',
-      'Update' => 'handle_wfs_transaction_update_action',
-      'Delete' => 'handle_wfs_transaction_delete_action'
+      'Insert' => 'handle_insert',
+      'Update' => 'handle_update',
+      'Delete' => 'handle_delete'
     );
 
-    $allowed_area_types = array_keys(farm_area_types());
-
-    geophp_load();
+    $set_asset_property_method = $this->create_asset_property_setter();
 
     $transactionResults = new TransactionResults();
 
@@ -25,218 +49,260 @@ class FarmWfsTransactionHandler {
       $action_handler = $action_handlers[$transaction_action_elem->nodeName] ?? null;
 
       if (! $action_handler) {
-        return farmos_wfs_makeExceptionReport(function ($eReport, $elem) {
-          $eReport->appendChild($elem('Exception', [], $elem('ExceptionText', [], "Could not understand request body: Transaction actions must be one of Insert, Update, or Delete")));
-        });
+        return farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) {
+            $eReport->appendChild(
+              $elem('Exception', [],
+                $elem('ExceptionText', [],
+                  "Could not understand request body: Transaction actions must be one of Insert, Update, or Delete")));
+          });
       }
 
-      $action_handler($transaction_action_elem, $transactionResults, $allowed_area_types);
+      $this->$action_handler($transaction_action_elem, $transactionResults, $set_asset_property_method);
     }
 
-    return farmos_wfs_makeDoc(function ($doc, $elem) use ($transactionResults) {
-      $doc->appendChild($elem('wfs:TransactionResponse', array(
-        'xmlns:wfs' => "http://www.opengis.net/wfs",
-        'xmlns:ogc' => "http://www.opengis.net/ogc",
-        'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
-        'xsi:schemaLocation' => "http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd"
-      ), function ($transactionResponse, $elem) use ($transactionResults) {
+    return farmos_wfs_makeDoc(
+      function ($doc, $elem) use ($transactionResults) {
+        $doc->appendChild(
+          $elem('wfs:TransactionResponse',
+            array(
+              'xmlns:wfs' => "http://www.opengis.net/wfs",
+              'xmlns:ogc' => "http://www.opengis.net/ogc",
+              'xmlns:xsi' => "http://www.w3.org/2001/XMLSchema-instance",
+              'xsi:schemaLocation' => "http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd"
+            ),
+            function ($transactionResponse, $elem) use ($transactionResults) {
 
-        $transactionResponse->appendChild($elem('wfs:TransactionSummary', [], function ($transactionSummary, $elem) use ($transactionResults) {
+              $transactionResponse->appendChild(
+                $elem('wfs:TransactionSummary', [],
+                  function ($transactionSummary, $elem) use ($transactionResults) {
 
-          $transactionSummary->appendChild($elem('wfs:totalInserted', [], "{$transactionResults->totalInserted()}"));
-          $transactionSummary->appendChild($elem('wfs:totalUpdated', [], "{$transactionResults->totalUpdated()}"));
-          $transactionSummary->appendChild($elem('wfs:totalDeleted', [], "{$transactionResults->totalDeleted()}"));
-        }));
+                    $transactionSummary->appendChild(
+                      $elem('wfs:totalInserted', [], "{$transactionResults->totalInserted()}"));
+                    $transactionSummary->appendChild(
+                      $elem('wfs:totalUpdated', [], "{$transactionResults->totalUpdated()}"));
+                    $transactionSummary->appendChild(
+                      $elem('wfs:totalDeleted', [], "{$transactionResults->totalDeleted()}"));
+                  }));
 
-        $transactionResponse->appendChild($elem('wfs:InsertResults', [], function ($insertResults, $elem) use ($transactionResults) {
+              $transactionResponse->appendChild(
+                $elem('wfs:InsertResults', [],
+                  function ($insertResults, $elem) use ($transactionResults) {
 
-          foreach ($transactionResults->insertedFeaturesByHandle as $handle => $featureIds) {
+                    foreach ($transactionResults->insertedFeaturesByHandle as $handle => $featureIds) {
 
-            $insertResults->appendChild($elem('wfs:Feature', $handle ? array(
-              'handle' => $handle
-            ) : [], function ($feature, $elem) use ($featureIds) {
+                      $insertResults->appendChild(
+                        $elem('wfs:Feature', $handle ? array(
+                          'handle' => $handle
+                        ) : [],
+                          function ($feature, $elem) use ($featureIds) {
 
-              foreach ($featureIds as $featureId) {
+                            foreach ($featureIds as $featureId) {
 
-                $feature->appendChild($elem('ogc:FeatureId', array(
-                  'fid' => $featureId
-                )));
-              }
+                              $feature->appendChild($elem('ogc:FeatureId', array(
+                                'fid' => $featureId
+                              )));
+                            }
+                          }));
+                    }
+                  }));
+
+              $transactionResponse->appendChild(
+                $elem('wfs:TransactionResults', [],
+                  function ($insertResults, $elem) use ($transactionResults) {
+
+                    foreach ($transactionResults->insertionFailureMessagesByHandle as $handle => $messages) {
+
+                      foreach ($messages as $message) {
+
+                        $insertResults->appendChild(
+                          $elem('wfs:Action', $handle ? array(
+                            'locator' => $handle
+                          ) : [],
+                            function ($feature, $elem) use ($message) {
+
+                              $feature->appendChild($elem('wfs:Message', [], $message));
+                            }));
+                      }
+                    }
+
+                    foreach ($transactionResults->updateFailureMessages as $failed_update_idx => $message) {
+
+                      $insertResults->appendChild(
+                        $elem('wfs:Action', array(
+                          'locator' => "failed_update-$failed_update_idx"
+                        ),
+                          function ($feature, $elem) use ($message) {
+
+                            $feature->appendChild($elem('wfs:Message', [], $message));
+                          }));
+                    }
+                  }));
             }));
-          }
-        }));
-
-        $transactionResponse->appendChild($elem('wfs:TransactionResults', [], function ($insertResults, $elem) use ($transactionResults) {
-
-          foreach ($transactionResults->insertionFailureMessagesByHandle as $handle => $messages) {
-
-            foreach ($messages as $message) {
-
-              $insertResults->appendChild($elem('wfs:Action', $handle ? array(
-                'locator' => $handle
-              ) : [], function ($feature, $elem) use ($message) {
-
-                $feature->appendChild($elem('wfs:Message', [], $message));
-              }));
-            }
-          }
-
-          foreach ($transactionResults->updateFailureMessages as $failed_update_idx => $message) {
-
-            $insertResults->appendChild($elem('wfs:Action', array(
-              'locator' => "failed_update-$failed_update_idx"
-            ), function ($feature, $elem) use ($message) {
-
-              $feature->appendChild($elem('wfs:Message', [], $message));
-            }));
-          }
-        }));
-      }));
-    });
-  }
-}
-
-function handle_wfs_transaction_insert_action($transaction_action_elem, $transactionResults, $allowed_area_types) {
-  $handle = $transaction_action_elem->attributes['handle'] ?? null;
-
-  foreach ($transaction_action_elem->childNodes as $feature_to_insert) {
-
-    $feature_type = $feature_to_insert->localName;
-
-    if (! in_array($feature_type, FARMOS_WFS_UNQUALIFIED_TYPE_NAMES)) {
-      return farmos_wfs_makeExceptionReport(function ($eReport, $elem) use ($feature_type) {
-        $eReport->appendChild($elem('Exception', [], $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$feature_type'")));
       });
-    }
+  }
 
-    $vocab = taxonomy_vocabulary_machine_name_load('farm_areas');
-    if (empty($vocab)) {
-      // TODO: Handle 'farm_areas' vocab not existing
-    }
+  private function handle_insert($transaction_action_elem, $transactionResults, $set_asset_property_method) {
+    $handle = $transaction_action_elem->attributes['handle'] ?? null;
 
-    $area = new stdClass();
-    $area->vid = $vocab->vid;
+    foreach ($transaction_action_elem->childNodes as $feature_to_insert) {
 
-    $property_handlers = farmos_wfs_get_property_handlers($allowed_area_types);
+      list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_name_to_validated_feature_types(
+        $feature_to_insert->localName);
 
-    foreach ($feature_to_insert->childNodes as $feature_property_elem) {
+      if (! empty($unknown_type_names)) {
+        $unknown_type_name = $unknown_type_names[0];
 
-      $property_handler = $property_handlers[$feature_property_elem->localName] ?? null;
+        return farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) use ($unknown_type_name) {
+            $eReport->appendChild(
+              $elem('Exception', [],
+                $elem('ExceptionText', [],
+                  "Could not understand request body: Unknown feature type '$unknown_type_name'")));
+          });
+      }
 
-      if ($property_handler) {
+      $feature_type = $feature_types[0];
+
+      $asset_storage = $this->entityTypeManager->getStorage('asset');
+
+      $asset = $asset_storage->create([
+        'type' => $feature_type->getAssetType(),
+      ]);
+
+      foreach ($feature_to_insert->childNodes as $feature_property_elem) {
 
         try {
-          $property_handler($feature_property_elem, $area);
-        } catch (Exception $e) {
+          $set_asset_property_method($feature_type, $feature_property_elem->localName, $feature_property_elem, $asset);
+        } catch (\Exception $e) {
           $transactionResults->recordInsertionFailure($handle, $e->getMessage());
           continue 2;
         }
       }
     }
 
-    taxonomy_term_save($area);
+    $asset->save();
 
-    $transactionResults->recordInsertionSuccess($handle, "$feature_type.{$area->tid}");
+    $transactionResults->recordInsertionSuccess($handle, "{$feature_type->unqualifiedTypeName()}.{$asset->uuid()}");
   }
-}
 
-function farmos_wfs_get_property_handlers($allowed_area_types) {
-  return array(
-    'name' => function ($e, $area) {
-      $area->name = check_plain($e->nodeValue);
-    },
-    'area_type' => function ($e, $area) use ($allowed_area_types) {
-      $area_type = $e->nodeValue;
+  private function handle_update($transaction_action_elem, $transactionResults, $set_asset_property_method) {
+    list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_name_to_validated_feature_types(
+      $transaction_action_elem->getAttribute('typeName'));
 
-      if (! in_array($area_type, $allowed_area_types)) {
-        $allowed_area_types_str = implode(", ", $allowed_area_types);
-        throw new Exception("Illegal area type $area_type. Value must be one of $allowed_area_types_str");
-      }
+    if (! empty($unknown_type_names)) {
+      $unknown_type_name = $unknown_type_names[0];
 
-      $area->field_farm_area_type[LANGUAGE_NONE][0]['value'] = $area_type;
-    },
-    'description' => function ($e, $area) {
-      $area->description = $e->nodeValue;
-    },
-    'geometry' => function ($e, $area) {
-      // TODO: Validate that geometry type matches $feature_type
-      $area->field_farm_geofield[LANGUAGE_NONE][0]['geom'] = gml_three_point_one_point_one_to_geophp($e->firstChild);
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) use ($unknown_type_name) {
+          $eReport->appendChild(
+            $elem('Exception', [],
+              $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$unknown_type_name'")));
+        });
     }
-  );
-}
 
-function handle_wfs_transaction_update_action($transaction_action_elem, $transactionResults, $allowed_area_types) {
-  $type_name = $transaction_action_elem->getAttribute('typeName');
+    $feature_type = $feature_types[0];
 
-  if (! in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
-    return farmos_wfs_makeExceptionReport(function ($eReport, $elem) use ($type_name) {
-      $eReport->appendChild($elem('Exception', [], $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));
-    });
-  }
+    $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
 
-  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
+    $filter_elem = $children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
 
-  $filter = $children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
+    $geometry_types = [
+      $feature_type->getGeometryType()
+    ];
 
-  $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
+    $asset_ids = $this->filterQueryResolver->resolve_query($feature_type->getAssetType(), $geometry_types, $filter_elem);
 
-  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids([
-    $geo_type
-  ], $filter);
+    $asset_storage = $this->entityTypeManager->getStorage('asset');
 
-  $areas = entity_load('taxonomy_term', $area_ids);
+    $assets = $asset_storage->loadMultiple($asset_ids);
 
-  $property_handlers = farmos_wfs_get_property_handlers($allowed_area_types);
+    $properties = $children_with_tag($transaction_action_elem, 'Property');
 
-  $properties = $children_with_tag($transaction_action_elem, 'Property');
+    foreach ($assets as $asset) {
+      foreach ($properties as $property_elem) {
 
-  foreach ($areas as $area) {
-    foreach ($properties as $property_elem) {
+        $name_elem = $children_with_tag($property_elem, 'Name')[0] ?? null;
+        $value_elem = $children_with_tag($property_elem, 'Value')[0] ?? null;
 
-      $name_elem = $children_with_tag($property_elem, 'Name')[0] ?? null;
-      $value_elem = $children_with_tag($property_elem, 'Value')[0] ?? null;
-
-      $name = preg_replace('/^farmos:/', '', $name_elem->nodeValue);
-
-      $property_handler = $property_handlers[$name] ?? null;
-
-      if ($property_handler) {
+        $name = preg_replace('/^farmos:/', '', $name_elem->nodeValue);
 
         try {
-          $property_handler($value_elem, $area);
-        } catch (Exception $e) {
+          $set_asset_property_method($feature_type, $name, $value_elem, $asset);
+        } catch (\Exception $e) {
           $transactionResults->recordUpdateFailure($e->getMessage());
           continue 2;
         }
       }
+
+      $asset->save();
+
+      $transactionResults->recordUpdateSuccess();
+    }
+  }
+
+  private function handle_delete($transaction_action_elem, $transactionResults, $set_asset_property_method) {
+    $type_name = $transaction_action_elem->getAttribute('typeName');
+
+    if (! in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
+      return farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) use ($type_name) {
+          $eReport->appendChild(
+            $elem('Exception', [],
+              $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));
+        });
     }
 
-    taxonomy_term_save($area);
+    $filter_elem = farmos_wfs_get_xnode_children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
 
-    $transactionResults->recordUpdateSuccess();
+    $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
+
+    $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids([
+      $geo_type
+    ], $filter_elem);
+
+    foreach ($area_ids as $area_id) {
+      taxonomy_term_delete($area_id);
+      $transactionResults->recordDeleteSuccess();
+    }
   }
-}
 
-function handle_wfs_transaction_delete_action($transaction_action_elem, $transactionResults, $allowed_area_types) {
-  $type_name = $transaction_action_elem->getAttribute('typeName');
+  private function create_asset_property_setter() {
+    $field_definitions_by_asset_type_cache = [];
 
-  if (! in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
-    return farmos_wfs_makeExceptionReport(function ($eReport, $elem) use ($type_name) {
-      $eReport->appendChild($elem('Exception', [], $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));
-    });
-  }
+    return function (FarmWfsFeatureType $feature_type, string $raw_property_name, \DOMElement $property_value_elem,
+      Asset $asset) use (&$field_definitions_by_asset_type_cache) {
 
-  $filter_elem = farmos_wfs_get_xnode_children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
+      if ($raw_property_name == 'geometry') {
+        $wkt = gml_three_point_one_point_one_to_geophp($property_value_elem->firstChild)->out('wkt');
 
-  $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
+        // TODO: Determine when to set intrinsic geometry or create logs
+        $asset->set('intrinsic_geometry', $wkt);
 
-  $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids([
-    $geo_type
-  ], $filter_elem);
+        return;
+      }
 
-  foreach ($area_ids as $area_id) {
-    taxonomy_term_delete($area_id);
-    $transactionResults->recordDeleteSuccess();
+      if (! isset($field_definitions_by_asset_type_cache[$feature_type->getAssetType()])) {
+        $field_definitions_by_asset_type_cache[$feature_type->getAssetType()] = $this->entityFieldManager->getFieldDefinitions(
+          'asset', $feature_type->getAssetType());
+      }
+
+      $field_definitions = $field_definitions_by_asset_type_cache[$feature_type->getAssetType()];
+
+      $field_definition = $field_definitions[$raw_property_name] ?? null;
+
+      if (str_starts_with($raw_property_name, '__') || $field_definition->isReadOnly()) {
+        throw new \Exception("Attempted to set read-only asset property: $raw_property_name");
+      }
+
+      if (! $field_definition) {
+        throw new \Exception("Attempted to set unknown asset property: $raw_property_name");
+      }
+
+      $value = $property_value_elem->nodeValue;
+
+      $asset->set($raw_property_name, $value);
+    };
   }
 }
 
@@ -295,7 +361,7 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
 
       $coord_pair = explode(' ', $pos->nodeValue);
 
-      return new Point($coord_pair[0], $coord_pair[1]);
+      return new \Point($coord_pair[0], $coord_pair[1]);
 
     case 'LineString':
 
@@ -304,10 +370,10 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
       $coord_pairs = array_chunk(explode(' ', $posList->nodeValue), 2);
 
       $points = array_map(function ($coord_pair) {
-        return new Point($coord_pair[0], $coord_pair[1]);
+        return new \Point($coord_pair[0], $coord_pair[1]);
       }, $coord_pairs);
 
-      return new LineString($points);
+      return new \LineString($points);
 
     case 'Polygon':
 
@@ -331,16 +397,16 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
           $coord_pairs = array_chunk(explode(' ', $posList->nodeValue), 2);
 
           $points = array_map(function ($coord_pair) {
-            return new Point($coord_pair[0], $coord_pair[1]);
+            return new \Point($coord_pair[0], $coord_pair[1]);
           }, $coord_pairs);
 
-          $fn($lines, new LineString($points));
+          $fn($lines, new \LineString($points));
         }
       }
 
-      return new Polygon($lines);
+      return new \Polygon($lines);
 
     default:
-      throw new Exception("Unsupported geometry type: {$geometry_elem->localName}");
+      throw new \Exception("Unsupported geometry type: {$geometry_elem->localName}");
   }
 }

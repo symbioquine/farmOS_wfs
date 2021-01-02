@@ -41,7 +41,7 @@ class FarmWfsFeatureType {
   }
 
   public function unqualifiedTypeSchemaName() {
-    return $this->unqualifiedTypeName() + "_type";
+    return $this->unqualifiedTypeName() . "_type";
   }
 
   public function qualifiedTypeSchemaName() {
@@ -56,5 +56,9 @@ class FarmWfsFeatureType {
     $geometry_type_name = $this->getGeometryTypeName();
 
     return "gml:{$geometry_type_name}PropertyType";
+  }
+
+  public function __toString() {
+    return "FarmWfsFeatureType({$this->assetType}, {$this->geometryType})";
   }
 }

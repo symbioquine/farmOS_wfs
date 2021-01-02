@@ -4,6 +4,7 @@ services:
     arguments:
      - '@request_stack'
      - '@config.factory'
+     - '@current_user'
      - '@farmos_wfs.get_capabilities_handler'
      - '@farmos_wfs.describe_feature_type_handler'
      - '@farmos_wfs.get_feature_handler'
@@ -40,6 +41,11 @@ services:
 
   farmos_wfs.transaction_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsTransactionHandler
+    arguments:
+     - '@entity_type.manager'
+     - '@entity_field.manager'
+     - '@farmos_wfs.feature_type_factory_validator'
+     - '@farmos_wfs.filter_query_resolver'
 
 
   farmos_wfs.feature_type_factory_validator:
