@@ -302,90 +302,84 @@ class TestTest(unittest.TestCase):
         self.assertEqual(asset['attributes']['geometry']['value'],
                          "POLYGON ((-104.0556 41.0037, -104.0584 44.9949, -111.0539 44.9998, -111.0457 40.9986, -104.0556 41.0006, -104.0556 41.0037))")
 
-    @unittest.skip("Not yet updated for 2.x")
-    def test_qgis_update_and_delete_point_feature(self):
-        south_field_id = self.create_area_entity({
-            "vocabulary": "3",
+    def test_qgis_update_and_delete_point_asset(self):
+        south_field_id = self.create_asset('land', {
             "name": "South field",
-            "description": "Sample south field description... [created by farmOS_wfs-qgis_tests]",
-            "area_type": "field",
-            "geofield": [
-                    {
-                        "geom": "POINT(-98.27361139210143 28.614320347429143)",
-                    },
-            ],
+            "notes": {
+                "value": "Sample south field description... [created by farmOS_wfs-qgis_tests]",
+            },
+            "intrinsic_geometry": {
+                "value": "POINT(-98.27361139210143 28.614320347429143)",
+            },
+            "land_type": "field",
+            "is_location": True,
+            "is_fixed": True,
         })
 
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:PointArea')
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
 
         features = list(vlayer.getFeatures())
 
         south_field_feature = next(
-            iter(filter(lambda f: f.attribute('area_id') == south_field_id, features)))
+            iter(filter(lambda f: f.attribute('__uuid') == south_field_id, features)))
 
         with self.subTest("update point feature"):
             with edit(vlayer):
                 south_field_feature.setAttribute(
                     "name", "South field (updated)")
-                south_field_feature.setAttribute("area_type", "paddock")
+                south_field_feature.setAttribute("land_type", "paddock")
                 south_field_feature.setAttribute(
-                    "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]")
+                    "notes", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]")
                 south_field_feature.setGeometry(QgsGeometry.fromWkt(
                     "POINT(-95.32595536400291 29.29726983388369)"))
 
                 vlayer.updateFeature(south_field_feature)
 
-            area = self.get_area_entity_by_id(south_field_id)
+            asset = self.get_asset_by_type_and_id('land', south_field_id)
 
-            self.assertEqual(area['name'], "South field (updated)")
-            self.assertEqual(area['area_type'], "paddock")
+            self.assertEqual(asset['attributes']['name'],
+                             "South field (updated)")
+            self.assertEqual(asset['attributes']['land_type'], "paddock")
             # The Drupal entity API adds some markup around our description so just
             # assert that the description is a substring of it
             self.assertIn(
-                "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]", area['description'])
-            self.assertEqual(area['geofield'][0]['geom'],
-                             'POINT (-95.32595536400299 29.297269833884)')
+                "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
+            self.assertEqual(asset['attributes']['geometry']['value'],
+                             'POINT (-95.32595536400291 29.29726983388369)')
 
         with self.subTest("delete point feature"):
             with edit(vlayer):
                 self.assertTrue(vlayer.deleteFeature(south_field_feature.id()))
 
-            with self.requests_session() as s:
-                areas_response = s.get(
-                    "http://www/taxonomy_term.json?tid={}".format(south_field_id))
+            self.assert_asset_does_not_exist('land', south_field_id)
 
-                self.assertTrue(areas_response.ok)
-
-                self.assertFalse(areas_response.json()['list'])
-
-    @unittest.skip("Not yet updated for 2.x")
-    def test_qgis_update_and_delete_line_string_feature(self):
-        east_coast_id = self.create_area_entity({
-            "vocabulary": "3",
+    def test_qgis_update_and_delete_line_string_asset(self):
+        east_coast_id = self.create_asset('water', {
             "name": "East coast",
-            "description": "Sample east coast description... [created by farmOS_wfs-qgis_tests]",
-            "area_type": "water",
-            "geofield": [
-                    {
-                        "geom": "LINESTRING(-67.11339126191727 44.38410924306203,-70.66046174786861 43.05308358586231,"
-                        "-70.38761017202621 41.38618744731713,-75.02608696134718 38.61744240874938,"
-                        "-75.4353643251108 35.51577343924532,-81.30167320572264 30.71929617429477,"
-                        "-80.00562822047117 25.425723522771094)",
-                    },
-            ],
+            "notes": {
+                "value": "Sample east coast description... [created by farmOS_wfs-qgis_tests]",
+            },
+            "intrinsic_geometry": {
+                "value": "LINESTRING(-67.11339126191727 44.38410924306203,-70.66046174786861 43.05308358586231,"
+                "-70.38761017202621 41.38618744731713,-75.02608696134718 38.61744240874938,"
+                "-75.4353643251108 35.51577343924532,-81.30167320572264 30.71929617429477,"
+                "-80.00562822047117 25.425723522771094)",
+            },
+            "is_location": True,
+            "is_fixed": True,
         })
 
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:LineStringArea')
+        vlayer = self.get_qgis_wfs_vector_layer(
+            'farmos:asset_water_linestring')
 
         features = list(vlayer.getFeatures())
 
         east_coast_feature = next(
-            iter(filter(lambda f: f.attribute('area_id') == east_coast_id, features)))
+            iter(filter(lambda f: f.attribute('__uuid') == east_coast_id, features)))
 
         with self.subTest("update line string feature"):
             with edit(vlayer):
                 east_coast_feature.setAttribute("name", "East coast (updated)")
-                east_coast_feature.setAttribute("area_type", "other")
                 east_coast_feature.setGeometry(QgsGeometry.fromWkt(
                     "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
                     "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
@@ -394,11 +388,11 @@ class TestTest(unittest.TestCase):
 
                 vlayer.updateFeature(east_coast_feature)
 
-            area = self.get_area_entity_by_id(east_coast_id)
+            asset = self.get_asset_by_type_and_id('water', east_coast_id)
 
-            self.assertEqual(area['name'], "East coast (updated)")
-            self.assertEqual(area['area_type'], "other")
-            self.assertEqual(area['geofield'][0]['geom'],
+            self.assertEqual(asset['attributes']['name'],
+                             "East coast (updated)")
+            self.assertEqual(asset['attributes']['geometry']['value'],
                              "LINESTRING (-67.113391261917 44.384109243062, -69.15977808073499 44.237678117855, "
                              "-70.66046174786899 43.053083585862, -70.387610172026 41.386187447317, -73.525403294214 40.665750477737, "
                              "-75.026086961347 38.617442408749, -75.435364325111 35.515773439245, -79.255286386905 33.321470318467, "
@@ -408,41 +402,37 @@ class TestTest(unittest.TestCase):
             with edit(vlayer):
                 self.assertTrue(vlayer.deleteFeature(east_coast_feature.id()))
 
-            with self.requests_session() as s:
-                areas_response = s.get(
-                    "http://www/taxonomy_term.json?tid={}".format(east_coast_id))
+            self.assert_asset_does_not_exist('water', east_coast_id)
 
-                self.assertTrue(areas_response.ok)
+    def test_qgis_update_and_delete_polygon_asset(self):
+        self.maxDiff = None
 
-                self.assertFalse(areas_response.json()['list'])
-
-    @unittest.skip("Not yet updated for 2.x")
-    def test_qgis_update_and_delete_polygon_feature(self):
-        nevada_id = self.create_area_entity({
-            "vocabulary": "3",
+        nevada_id = self.create_asset('land', {
             "name": "Nevada",
-            "description": "Sample Nevada description... [created by farmOS_wfs-qgis_tests]",
-            "area_type": "property",
-            "geofield": [
-                    {
-                        "geom": "POLYGON((-120.03963847422418 41.96779624409592,-114.05159157669674 41.91964576564612,"
+            "notes": {
+                "value": "Sample Nevada description... [created by farmOS_wfs-qgis_tests]",
+            },
+            "intrinsic_geometry": {
+                "value": "POLYGON((-120.03963847422418 41.96779624409592,-114.05159157669674 41.91964576564612,"
                          "-113.9868559345613 34.79796936594694,-120.00727065315647 38.98953879241205,"
                          "-120.03963847422418 41.96779624409592))",
-                    },
-            ],
+            },
+            "land_type": "property",
+            "is_location": True,
+            "is_fixed": True,
         })
 
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:PolygonArea')
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_polygon')
 
         features = list(vlayer.getFeatures())
 
         nevada_feature = next(
-            iter(filter(lambda f: f.attribute('area_id') == nevada_id, features)))
+            iter(filter(lambda f: f.attribute('__uuid') == nevada_id, features)))
 
         with self.subTest("update polygon feature"):
             with edit(vlayer):
                 nevada_feature.setAttribute("name", "Nevada (updated)")
-                nevada_feature.setAttribute("area_type", "other")
+                nevada_feature.setAttribute("land_type", "other")
                 nevada_feature.setGeometry(QgsGeometry.fromWkt(
                     "POLYGON((-120.0008182980056 41.99427533301156,-114.04245641767388 41.99250627234076,"
                     "-114.04392482849038 36.21145647925469,-114.20918794522191 35.995762847791,-114.51771008294033 36.14492383224095,"
@@ -451,27 +441,21 @@ class TestTest(unittest.TestCase):
 
                 vlayer.updateFeature(nevada_feature)
 
-            area = self.get_area_entity_by_id(nevada_id)
+            asset = self.get_asset_by_type_and_id('land', nevada_id)
 
-            self.assertEqual(area['name'], "Nevada (updated)")
-            self.assertEqual(area['area_type'], "other")
-            self.assertEqual(area['geofield'][0]['geom'],
-                             "POLYGON ((-120.00081829801 41.994275333012, -114.04245641767 41.992506272341, "
-                             "-114.04392482849 36.211456479255, -114.20918794522 35.995762847791, -114.51771008294 36.144923832241, "
-                             "-114.74513682101 36.073221487582, -114.71740185295 35.749752026631, -114.55653903822 35.212237546616, "
-                             "-114.63419694878 35.008040957717, -120.00082376388 38.999978080393, -120.00081829801 41.994275333012))")
+            self.assertEqual(asset['attributes']['name'], "Nevada (updated)")
+            self.assertEqual(asset['attributes']['land_type'], "other")
+            self.assertEqual(asset['attributes']['geometry']['value'],
+                             "POLYGON ((-120.0008182980056 41.99427533301156, -114.0424564176739 41.99250627234076, "
+                             "-114.0439248284904 36.21145647925469, -114.2091879452219 35.995762847791, -114.5177100829403 36.14492383224095, "
+                             "-114.7451368210078 36.0732214875824, -114.7174018529508 35.7497520266312, -114.5565390382201 35.21223754661607, "
+                             "-114.6341969487798 35.00804095771656, -120.0008237638801 38.99997808039316, -120.0008182980056 41.99427533301156))")
 
         with self.subTest("delete polygon feature"):
             with edit(vlayer):
                 self.assertTrue(vlayer.deleteFeature(nevada_feature.id()))
 
-            with self.requests_session() as s:
-                areas_response = s.get(
-                    "http://www/taxonomy_term.json?tid={}".format(nevada_id))
-
-                self.assertTrue(areas_response.ok)
-
-                self.assertFalse(areas_response.json()['list'])
+            self.assert_asset_does_not_exist('land', nevada_id)
 
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
@@ -605,6 +589,15 @@ class TestTest(unittest.TestCase):
         self.assertTrue(asset_response.ok)
 
         return asset_response.json()['data']
+
+    def assert_asset_does_not_exist(self, asset_type, asset_id):
+        self.assertIsInstance(asset_id, str)
+
+        with self.requests_session() as s:
+            asset_response = s.get(
+                "http://www/api/asset/{}/{}".format(asset_type, asset_id))
+
+        self.assertEqual(asset_response.status_code, 404)
 
     def create_asset(self, asset_type, asset_attributes):
         with self.requests_session() as s:

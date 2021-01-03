@@ -8,7 +8,6 @@ use Drupal\asset\Entity\Asset;
 use Drupal\farmos_wfs\FarmWfsFeatureType;
 use Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator;
 use Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver;
-use function Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver\farmos_wfs_ogc_filter_one_point_one_to_area_ids;
 
 /**
  * Defines FarmWfsGetFeatureHandler class.
@@ -208,7 +207,7 @@ class FarmWfsTransactionHandler {
     $filter_elem = $children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
 
     $geometry_types = [
-      $feature_type->getGeometryType()
+      $feature_type->getGeometryTypeName()
     ];
 
     $asset_ids = $this->filterQueryResolver->resolve_query($feature_type->getAssetType(), $geometry_types, $filter_elem);
@@ -242,27 +241,36 @@ class FarmWfsTransactionHandler {
   }
 
   private function handle_delete($transaction_action_elem, $transactionResults, $set_asset_property_method) {
-    $type_name = $transaction_action_elem->getAttribute('typeName');
+    list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_name_to_validated_feature_types(
+      $transaction_action_elem->getAttribute('typeName'));
 
-    if (! in_array($type_name, FARMOS_WFS_QUALIFIED_TYPE_NAMES)) {
+    if (! empty($unknown_type_names)) {
+      $unknown_type_name = $unknown_type_names[0];
+
       return farmos_wfs_makeExceptionReport(
-        function ($eReport, $elem) use ($type_name) {
+        function ($eReport, $elem) use ($unknown_type_name) {
           $eReport->appendChild(
             $elem('Exception', [],
-              $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$type_name'")));
+              $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$unknown_type_name'")));
         });
     }
 
+    $feature_type = $feature_types[0];
+
     $filter_elem = farmos_wfs_get_xnode_children_with_tag($transaction_action_elem, 'Filter')[0] ?? null;
 
-    $geo_type = strtolower(preg_replace('/^farmos:(.*)Area$/', '$1', $type_name));
+    $geometry_types = [
+      $feature_type->getGeometryTypeName()
+    ];
 
-    $area_ids = farmos_wfs_ogc_filter_one_point_one_to_area_ids([
-      $geo_type
-    ], $filter_elem);
+    $asset_ids = $this->filterQueryResolver->resolve_query($feature_type->getAssetType(), $geometry_types, $filter_elem);
 
-    foreach ($area_ids as $area_id) {
-      taxonomy_term_delete($area_id);
+    $asset_storage = $this->entityTypeManager->getStorage('asset');
+
+    $assets = $asset_storage->loadMultiple($asset_ids);
+
+    foreach ($assets as $asset) {
+      $asset->delete();
       $transactionResults->recordDeleteSuccess();
     }
   }
