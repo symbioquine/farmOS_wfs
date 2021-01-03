@@ -70,7 +70,4 @@ services:
   farmos_wfs.bbox_query_resolver:
     class: Drupal\farmos_wfs\QueryResolver\FarmWfsBboxQueryResolver
     arguments:
-     - '@request_stack'
      - '@entity_type.manager'
-     - '@entity_type.bundle.info'
-     - '@entity_field.manager'

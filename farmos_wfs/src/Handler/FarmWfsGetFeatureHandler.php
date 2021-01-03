@@ -161,7 +161,7 @@ class FarmWfsGetFeatureHandler {
 
     $asset_type = $feature_type->getAssetType();
     $geometry_types = [
-      $feature_type->getGeometryType()
+      $feature_type->getGeometryTypeName()
     ];
 
     $asset_ids = [];

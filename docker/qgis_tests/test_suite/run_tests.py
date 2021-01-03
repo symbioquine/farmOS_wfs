@@ -11,7 +11,7 @@ import requests
 from oauthlib.oauth2 import LegacyApplicationClient
 from owslib.util import Authentication
 from owslib.wfs import WebFeatureService
-from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer, QgsFeature, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, edit, QgsEditError
+from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer, QgsFeature, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, edit, QgsEditError, QgsRectangle
 from requests_oauthlib import OAuth2Session, OAuth2
 
 
@@ -94,6 +94,34 @@ class TestTest(unittest.TestCase):
         self.assertEqual(north_field_feature.attribute('land_type'), "field")
         self.assertEqual(north_field_feature.geometry().asJson(
         ), '{"coordinates":[-31.040038615465,39.592143995004],"type":"Point"}')
+
+        with self.subTest("with BBOX filtering not containing the feature"):
+            vlayer.reload()
+
+            vlayer.selectByRect(QgsRectangle.fromWkt('POLYGON((-30 32, '
+                                                     '-31 32, '
+                                                     '-31 33, '
+                                                     '-30 33, '
+                                                     '-30 32))'))
+
+            features = vlayer.getSelectedFeatures()
+
+            self.assertNotIn('North field', list(
+                map(lambda f: f.attribute('name'), features)))
+
+        with self.subTest("with BBOX filtering containing the feature"):
+            vlayer.reload()
+
+            vlayer.selectByRect(QgsRectangle.fromWkt('POLYGON((-31 39, '
+                                                     '-32 39, '
+                                                     '-32 40, '
+                                                     '-31 40, '
+                                                     '-31 39))'))
+
+            features = vlayer.getSelectedFeatures()
+
+            self.assertIn('North field', list(
+                map(lambda f: f.attribute('name'), features)))
 
     def test_qgis_get_line_string_features(self):
         forty_ninth_parallel_id = self.create_asset('land', {
@@ -239,7 +267,8 @@ class TestTest(unittest.TestCase):
                          "-117.258105494412 32.60369705122281)")
 
     def test_qgis_create_polygon_equipment_asset(self):
-        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_equipment_polygon')
+        vlayer = self.get_qgis_wfs_vector_layer(
+            'farmos:asset_equipment_polygon')
 
         with edit(vlayer):
             f = QgsFeature(vlayer.fields())
@@ -547,6 +576,7 @@ class TestTest(unittest.TestCase):
         })
 
     def get_qgis_wfs_vector_layer(self, type_name):
+
         vlayer = QgsVectorLayer(
             WFS_ENDPOINT + '?' + urlencode(dict(
                 service='WFS',
@@ -554,6 +584,9 @@ class TestTest(unittest.TestCase):
                 version='1.1.0',
                 typename=type_name,
                 authcfg=self.cfg.id(),
+                # This should actually be `restrictToRequestBBOX=1` once
+                # https://github.com/qgis/QGIS/issues/40826 is addressed
+                bbox='1',
             ), safe=':'), type_name, "WFS")
 
         self.assertTrue(vlayer.isValid())
