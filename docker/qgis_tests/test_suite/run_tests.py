@@ -54,7 +54,7 @@ class TestTest(unittest.TestCase):
             for asset_type in asset_types['data']:
 
                 farm_assets = assert_get_json(
-                    "http://www/api/asset/{}?filter[is_location]=1".format(asset_type['attributes']['drupal_internal__id']))
+                    "http://www/api/asset/{}".format(asset_type['attributes']['drupal_internal__id']))
 
                 for asset in farm_assets['data']:
                     notes = (asset['attributes'].get(
