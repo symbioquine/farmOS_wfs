@@ -178,11 +178,11 @@ class FarmWfsTransactionHandler {
           continue 2;
         }
       }
+
+      $asset->save();
+
+      $transactionResults->recordInsertionSuccess($handle, "{$feature_type->unqualifiedTypeName()}.{$asset->uuid()}");
     }
-
-    $asset->save();
-
-    $transactionResults->recordInsertionSuccess($handle, "{$feature_type->unqualifiedTypeName()}.{$asset->uuid()}");
   }
 
   private function handle_update($transaction_action_elem, $transactionResults, $set_asset_property_method) {
@@ -299,7 +299,7 @@ class FarmWfsTransactionHandler {
 
       $field_definition = $field_definitions[$raw_property_name] ?? null;
 
-      if (str_starts_with($raw_property_name, '__') || $field_definition->isReadOnly()) {
+      if (str_starts_with($raw_property_name, '__') || ($field_definition && $field_definition->isReadOnly())) {
         throw new \Exception("Attempted to set read-only asset property: $raw_property_name");
       }
 
@@ -308,6 +308,14 @@ class FarmWfsTransactionHandler {
       }
 
       $value = $property_value_elem->nodeValue;
+
+      if ($field_definition->getType() == 'list_string') {
+        $options = options_allowed_values($field_definition->getFieldStorageDefinition());
+
+        if (! array_key_exists($value, $options)) {
+          throw new \Exception("Attempted to set unknown value of '$value' for asset property: $raw_property_name");
+        }
+      }
 
       $asset->set($raw_property_name, $value);
     };

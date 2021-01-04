@@ -214,7 +214,6 @@ class TestTest(unittest.TestCase):
         self.assertEqual(asset['attributes']['geometry']
                          ['value'], 'POINT (10 10)')
 
-    @unittest.skip("Test updated, but not yet implemented in 2.x branch")
     def test_qgis_create_land_asset_with_unknown_land_type(self):
         vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
 
