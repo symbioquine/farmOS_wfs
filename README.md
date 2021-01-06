@@ -51,6 +51,7 @@ Download the latest release from https://github.com/symbioquine/farmOS_wfs/relea
 In the `docker/` directory of this repository run;
 
 ```sh
+cp docker-compose.pgsql.yml docker-compose.yml
 docker-compose up -d
 ```
 

@@ -9,13 +9,19 @@ jobs:
   build:
     name: Run 2.x tests
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        dbms:
+         - pgsql
+         - mysql
+         - sqlite
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
       - name: Build QGIS Test Harness Docker image
         run: docker build -t qgis_test_harness docker/qgis_test_harness
       - name: Start containers
-        run: docker-compose --file ./docker/docker-compose.yml up -d
+        run: docker-compose --file ./docker/docker-compose.${{ matrix.dbms }}.yml up -d
       - name: Wait until www container is ready
         run: until [ -f ./docker/www/www-container-fs-ready ]; do sleep 0.1; done
       - name: Run QGIS tests
