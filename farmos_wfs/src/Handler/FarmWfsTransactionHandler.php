@@ -141,7 +141,7 @@ class FarmWfsTransactionHandler {
       });
   }
 
-  private function handle_insert($transaction_action_elem, $transactionResults, $set_asset_property_method) {
+  private function handle_insert(\DOMElement $transaction_action_elem, $transactionResults, $set_asset_property_method) {
     $handle = $transaction_action_elem->attributes['handle'] ?? null;
 
     foreach ($transaction_action_elem->childNodes as $feature_to_insert) {
@@ -169,10 +169,26 @@ class FarmWfsTransactionHandler {
         'type' => $feature_type->getAssetType(),
       ]);
 
-      foreach ($feature_to_insert->childNodes as $feature_property_elem) {
+      $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
 
+      $property_elements = $children_with_tag($feature_to_insert,
+        function ($localName) {
+          return $localName != 'geometry';
+        });
+
+      $geometry_property_element = $children_with_tag($feature_to_insert, 'geometry')[0] ?? null;
+
+      if ($geometry_property_element) {
+        $property_elements[] = $geometry_property_element;
+      }
+
+      $asset_logs_to_save = [];
+
+      foreach ($property_elements as $feature_property_elem) {
         try {
-          $set_asset_property_method($feature_type, $feature_property_elem->localName, $feature_property_elem, $asset);
+          $logs_to_save = $set_asset_property_method($feature_type, $feature_property_elem->localName,
+            $feature_property_elem, $asset);
+          $asset_logs_to_save += $logs_to_save;
         } catch (\Exception $e) {
           $transactionResults->recordInsertionFailure($handle, $e->getMessage());
           continue 2;
@@ -181,11 +197,18 @@ class FarmWfsTransactionHandler {
 
       $asset->save();
 
+      foreach ($asset_logs_to_save as $log_to_save) {
+        $log_to_save->set('asset', [
+          'target_id' => $asset->id()
+        ]);
+        $log_to_save->save();
+      }
+
       $transactionResults->recordInsertionSuccess($handle, "{$feature_type->unqualifiedTypeName()}.{$asset->uuid()}");
     }
   }
 
-  private function handle_update($transaction_action_elem, $transactionResults, $set_asset_property_method) {
+  private function handle_update(\DOMElement $transaction_action_elem, $transactionResults, $set_asset_property_method) {
     list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_name_to_validated_feature_types(
       $transaction_action_elem->getAttribute('typeName'));
 
@@ -216,18 +239,16 @@ class FarmWfsTransactionHandler {
 
     $assets = $asset_storage->loadMultiple($asset_ids);
 
-    $properties = $children_with_tag($transaction_action_elem, 'Property');
+    $properties = properties_as_name_value_elem_pairs_with_geometry_last($transaction_action_elem);
 
     foreach ($assets as $asset) {
-      foreach ($properties as $property_elem) {
 
-        $name_elem = $children_with_tag($property_elem, 'Name')[0] ?? null;
-        $value_elem = $children_with_tag($property_elem, 'Value')[0] ?? null;
+      $asset_logs_to_save = [];
 
-        $name = preg_replace('/^farmos:/', '', $name_elem->nodeValue);
-
+      foreach ($properties as list ($name, $value_elem)) {
         try {
-          $set_asset_property_method($feature_type, $name, $value_elem, $asset);
+          $logs_to_save = $set_asset_property_method($feature_type, $name, $value_elem, $asset);
+          $asset_logs_to_save += $logs_to_save;
         } catch (\Exception $e) {
           $transactionResults->recordUpdateFailure($e->getMessage());
           continue 2;
@@ -236,11 +257,18 @@ class FarmWfsTransactionHandler {
 
       $asset->save();
 
+      foreach ($asset_logs_to_save as $log_to_save) {
+        $log_to_save->set('asset', [
+          'target_id' => $asset->id()
+        ]);
+        $log_to_save->save();
+      }
+
       $transactionResults->recordUpdateSuccess();
     }
   }
 
-  private function handle_delete($transaction_action_elem, $transactionResults, $set_asset_property_method) {
+  private function handle_delete(\DOMElement $transaction_action_elem, $transactionResults, $set_asset_property_method) {
     list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_name_to_validated_feature_types(
       $transaction_action_elem->getAttribute('typeName'));
 
@@ -278,16 +306,34 @@ class FarmWfsTransactionHandler {
   private function create_asset_property_setter() {
     $field_definitions_by_asset_type_cache = [];
 
+    $log_storage = $this->entityTypeManager->getStorage('log');
+
     return function (FarmWfsFeatureType $feature_type, string $raw_property_name, \DOMElement $property_value_elem,
-      Asset $asset) use (&$field_definitions_by_asset_type_cache) {
+      Asset $asset) use (&$field_definitions_by_asset_type_cache, &$log_storage) {
+
+      $logs_to_save = [];
 
       if ($raw_property_name == 'geometry') {
         $wkt = gml_three_point_one_point_one_to_geophp($property_value_elem->firstChild)->out('wkt');
 
-        // TODO: Determine when to set intrinsic geometry or create logs
-        $asset->set('intrinsic_geometry', $wkt);
+        if ($asset->get('is_fixed')->value) {
+          $asset->set('intrinsic_geometry', $wkt);
+        } else {
+          $movement_log = $log_storage->create(
+            [
+              'type' => 'activity',
+              'status' => 'done',
+              'asset' => [
+                'target_id' => $asset->uuid()
+              ],
+              'is_movement' => TRUE,
+              'geometry' => $wkt,
+            ]);
 
-        return;
+          $logs_to_save[] = $movement_log;
+        }
+
+        return $logs_to_save;
       }
 
       if (! isset($field_definitions_by_asset_type_cache[$feature_type->getAssetType()])) {
@@ -318,8 +364,45 @@ class FarmWfsTransactionHandler {
       }
 
       $asset->set($raw_property_name, $value);
+
+      return $logs_to_save;
     };
   }
+}
+
+function properties_as_name_value_elem_pairs_with_geometry_last($transaction_action_elem) {
+  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
+
+  $properties = $children_with_tag($transaction_action_elem, 'Property');
+
+  $property_pairs = [];
+  $geometry_pair = null;
+
+  foreach ($properties as $property_elem) {
+
+    $name_elem = $children_with_tag($property_elem, 'Name')[0] ?? null;
+    $value_elem = $children_with_tag($property_elem, 'Value')[0] ?? null;
+
+    $name = preg_replace('/^farmos:/', '', $name_elem->nodeValue);
+
+    if ($name == 'geometry') {
+      $geometry_pair = [
+        'geometry',
+        $value_elem
+      ];
+    } else {
+      $property_pairs[] = [
+        $name,
+        $value_elem
+      ];
+    }
+  }
+
+  if ($geometry_pair) {
+    $property_pairs[] = $geometry_pair;
+  }
+
+  return $property_pairs;
 }
 
 class TransactionResults {

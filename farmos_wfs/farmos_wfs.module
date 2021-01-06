@@ -110,8 +110,10 @@ function farmos_wfs_get_xnode_children_with_tag($node, $tag) {
   return farmos_wfs_filter_xnodes_by_local_name(iterator_to_array($node->childNodes), $tag);
 }
 
-function farmos_wfs_filter_xnodes_by_local_name($nodes, $localName) {
-  return array_values(array_filter($nodes, function ($n) use ($localName) {
-    return $n->localName == $localName;
-  }));
+function farmos_wfs_filter_xnodes_by_local_name($nodes, $predicate) {
+  return array_values(
+    array_filter($nodes,
+      function ($n) use ($predicate) {
+        return is_callable($predicate) ? $predicate($n->localName) : $n->localName == $predicate;
+      }));
 }

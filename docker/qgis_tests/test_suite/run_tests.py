@@ -13,6 +13,7 @@ from owslib.util import Authentication
 from owslib.wfs import WebFeatureService
 from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer, QgsFeature, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, edit, QgsEditError, QgsRectangle
 from requests_oauthlib import OAuth2Session, OAuth2
+from collections import defaultdict
 
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -38,15 +39,61 @@ class TestTest(unittest.TestCase):
         with requests.Session() as s:
             s.auth = cls.requests_oauth2
 
+            tc = unittest.TestCase('__init__')
+
             def assert_get_json(url):
                 response = s.get(url)
 
                 if not response.ok:
                     print(response.text)
 
-                cls.assertTrue(None, response.ok)
+                tc.assertTrue(response.ok)
 
                 return response.json()
+
+            def asset_delete_json_api_entity(entity):
+                delete_response = s.delete(
+                    entity['links']['self']['href'])
+
+                if not delete_response.ok:
+                    print(delete_response.text)
+
+                tc.assertTrue(delete_response.ok)
+
+            log_types = assert_get_json(
+                "http://www/api/log_type/log_type")
+
+            for log_type in log_types['data']:
+
+                farm_logs = assert_get_json(
+                    "http://www/api/log/{}?include=asset".format(log_type['attributes']['drupal_internal__id']))
+
+                includes_by_type_and_id = defaultdict(dict)
+
+                for included_entity in farm_logs.get('included', []):
+                    includes_by_type_and_id[included_entity['type']
+                                            ][included_entity['id']] = included_entity
+
+                for log in farm_logs['data']:
+
+                    should_delete_log = False
+
+                    for asset_ref in log['relationships']['asset']['data']:
+                        asset = includes_by_type_and_id.get(
+                            asset_ref['type'], {}).get(asset_ref['id'], None)
+
+                        if asset is None:
+                            continue
+
+                        notes = (asset['attributes'].get(
+                            'notes', None) or {}).get('value', '')
+
+                        if '[created by farmOS_wfs-qgis_tests]' in notes:
+                            should_delete_log = True
+                            break
+
+                    if should_delete_log:
+                        asset_delete_json_api_entity(log)
 
             asset_types = assert_get_json(
                 "http://www/api/asset_type/asset_type")
@@ -63,9 +110,7 @@ class TestTest(unittest.TestCase):
                     if not '[created by farmOS_wfs-qgis_tests]' in notes:
                         continue
 
-                    delete_response = s.delete(asset['links']['self']['href'])
-
-                    cls.assertTrue(None, delete_response.ok)
+                    asset_delete_json_api_entity(asset)
 
     def test_qgis_get_point_features(self):
         north_field_id = self.create_asset('land', {
@@ -455,6 +500,39 @@ class TestTest(unittest.TestCase):
                 self.assertTrue(vlayer.deleteFeature(nevada_feature.id()))
 
             self.assert_asset_does_not_exist('land', nevada_id)
+
+    def test_qgis_create_nonfixed_point_animal_asset(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_animal_point')
+
+        with edit(vlayer):
+            f = QgsFeature(vlayer.fields())
+            f.setAttribute("name", "Dolly")
+            f.setAttribute(
+                "notes", "Description for the animal non-fixed point asset created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
+            f.setAttribute("is_fixed", 0)
+            f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(15, 15)))
+
+            vlayer.addFeature(f)
+
+        vlayer.reload()
+
+        features = list(vlayer.getFeatures())
+
+        created_feature = next(iter(filter(
+            lambda f: 'Description for the animal non-fixed point asset created via WFS from QGIS' in str(f.attribute('notes')), features)))
+
+        created_area_id = created_feature.attribute('__uuid')
+
+        asset = self.get_asset_by_type_and_id('animal', created_area_id)
+
+        self.assertEqual(asset['attributes']['name'], "Dolly")
+        # The Drupal entity API adds some markup around our description so just
+        # assert that the description is a substring of it
+        self.assertIn(
+            "Description for the animal non-fixed point asset created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
+        self.assertEqual(asset['attributes']['is_fixed'], False)
+        self.assertEqual(asset['attributes']['geometry']
+                         ['value'], 'POINT (15 15)')
 
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
