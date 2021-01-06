@@ -59,7 +59,6 @@ services:
     arguments:
      - '@database'
      - '@entity_type.manager'
-     - '@entity_field.manager'
      - '@datetime.time'
 
   farmos_wfs.filter_query_resolver:
