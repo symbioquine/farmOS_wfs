@@ -1,0 +1,42 @@
+version: '2'
+services:
+  www:
+    depends_on:
+      - db
+    image: farmos/farmos:2.x-dev
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -ex
+
+        wait_db_ready() {
+        }
+
+        if [ -d /opt/drupal ] && ! [ "$$(ls -A /opt/drupal/)" ]; then
+          echo "farmOS codebase not detected. Copying from pre-built files in the Docker image."
+          cp -rp /var/farmOS/. /opt/drupal
+          wait_db_ready
+          su www-data -s /bin/bash -c 'drush site-install farm --locale=en --db-url=sqlite://sites/example.com/files/.ht.sqlite --site-name=Test0 --account-name=root --account-pass=test'
+        fi
+
+        wait_db_ready
+
+        su www-data -s /bin/bash <<'EOF'
+            composer config repositories.farmos_dev_modules '{"type": "path", "url": "/farmos_dev_modules/farmos_wfs"}'
+
+            composer require symbioquine/farmos_wfs
+
+            drush --root=/opt/drupal pm-enable farmos_wfs
+        EOF
+
+        exec docker-entrypoint.sh apache2-foreground
+    volumes:
+      - './www:/opt/drupal'
+      - './php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini'
+      - '../farmos_wfs:/farmos_dev_modules/farmos_wfs'
+    ports:
+      - '80:80'
+    environment:
+      XDEBUG_CONFIG: remote_host=172.22.0.1
+      FARMOS_FS_READY_SENTINEL_FILENAME: /opt/drupal/www-container-fs-ready
