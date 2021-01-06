@@ -1,8 +1,6 @@
 version: '2'
 services:
   www:
-    depends_on:
-      - db
     image: farmos/farmos:2.x-dev
     entrypoint: /bin/bash
     command:
