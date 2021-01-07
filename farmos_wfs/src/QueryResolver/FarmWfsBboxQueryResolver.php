@@ -20,19 +20,23 @@ class FarmWfsBboxQueryResolver {
 
     $fixed_or_mobile_query_group = $asset_query->orConditionGroup();
 
-    $fixed_or_mobile_query_group->andConditionGroup()
-      ->condition('asset_field_data.is_fixed', 1)
-      ->condition('intrinsic_geometry.top', $bbox[0], '>=')
-      ->condition('intrinsic_geometry.right', $bbox[1], '>=')
-      ->condition('intrinsic_geometry.bottom', $bbox[2], '<=')
-      ->condition('intrinsic_geometry.left', $bbox[3], '<=');
+    $fixed_or_mobile_query_group->condition(
+      $fixed_or_mobile_query_group->andConditionGroup()
+        ->condition('asset_field_data.is_fixed', 1)
+        ->condition('intrinsic_geometry.intrinsic_geometry_top', $bbox[0], '>=')
+        ->condition('intrinsic_geometry.intrinsic_geometry_right', $bbox[1], '>=')
+        ->condition('intrinsic_geometry.intrinsic_geometry_bottom', $bbox[2], '<=')
+        ->condition('intrinsic_geometry.intrinsic_geometry_left', $bbox[3], '<='));
 
-    $fixed_or_mobile_query_group->andConditionGroup()
-      ->condition('asset_field_data.is_fixed', 0)
-      ->condition('log_geometry.geometry_top', $bbox[0], '>=')
-      ->condition('log_geometry.geometry_right', $bbox[1], '>=')
-      ->condition('log_geometry.geometry_bottom', $bbox[2], '<=')
-      ->condition('log_geometry.geometry_left', $bbox[3], '<=');
+    $fixed_or_mobile_query_group->condition(
+      $fixed_or_mobile_query_group->andConditionGroup()
+        ->condition('asset_field_data.is_fixed', 0)
+        ->condition('log_geometry.geometry_top', $bbox[0], '>=')
+        ->condition('log_geometry.geometry_right', $bbox[1], '>=')
+        ->condition('log_geometry.geometry_bottom', $bbox[2], '<=')
+        ->condition('log_geometry.geometry_left', $bbox[3], '<='));
+
+    $asset_query->condition($fixed_or_mobile_query_group);
 
     $result = $asset_query->execute();
 

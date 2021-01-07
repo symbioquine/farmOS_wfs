@@ -35,6 +35,7 @@ class FarmWfsQueryFactory {
         "WFS queries are not supported when the asset/log entity types are not backed by an SQL data store");
     }
 
+    $asset_table_mapping = $asset_storage->getTableMapping();
     $log_table_mapping = $log_storage->getTableMapping();
 
     $latest_movement_log_query = $this->create_latest_movement_log_query($log_storage, $log_table_mapping);
@@ -46,6 +47,11 @@ class FarmWfsQueryFactory {
     $asset_data_table = $asset_storage->getDataTable();
 
     $asset_query->join($asset_data_table, 'asset_field_data', 'asset.id = asset_field_data.id');
+
+    $asset_intrinsic_geometry_table = $asset_table_mapping->getFieldTableName('intrinsic_geometry');
+
+    $asset_query->leftJoin($asset_intrinsic_geometry_table, 'intrinsic_geometry',
+      'asset.id = intrinsic_geometry.entity_id AND intrinsic_geometry.deleted = 0');
 
     $asset_query->leftJoin($latest_movement_log_query, 'most_recent_movement_log_ids',
       'asset.id = asset_target_id AND most_recent_movement_log_ids.row_num = 1');
@@ -59,13 +65,17 @@ class FarmWfsQueryFactory {
 
     $fixed_or_mobile_query_group = $asset_query->orConditionGroup();
 
-    $fixed_or_mobile_query_group->andConditionGroup()
-      ->condition('asset_field_data.is_fixed', 1)
-      ->condition('intrinsic_geometry.geo_type', $geometry_types, 'IN');
+    $fixed_or_mobile_query_group->condition(
+      $fixed_or_mobile_query_group->andConditionGroup()
+        ->condition('asset_field_data.is_fixed', 1)
+        ->condition('intrinsic_geometry.intrinsic_geometry_geo_type', $geometry_types, 'IN'));
 
-    $fixed_or_mobile_query_group->andConditionGroup()
-      ->condition('asset_field_data.is_fixed', 0)
-      ->condition('log_geometry.geometry_geo_type', $geometry_types, 'IN');
+    $fixed_or_mobile_query_group->condition(
+      $fixed_or_mobile_query_group->andConditionGroup()
+        ->condition('asset_field_data.is_fixed', 0)
+        ->condition('log_geometry.geometry_geo_type', $geometry_types, 'IN'));
+
+    $asset_query->condition($fixed_or_mobile_query_group);
 
     return $asset_query;
   }
