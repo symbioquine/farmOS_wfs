@@ -94,7 +94,9 @@ class FarmWfsSimpleQueryResolver {
     $latest_movement_log_query->join($log_asset_table, 'log_asset',
       'log.id = log_asset.entity_id AND log_asset.deleted = 0');
 
-    $latest_movement_log_query->groupBy('log.id')->groupBy('log_asset.asset_target_id');
+    $latest_movement_log_query->groupBy('log.id')
+      ->groupBy('log_asset.asset_target_id')
+      ->groupBy('log_field_data.timestamp');
 
     return $latest_movement_log_query;
   }
