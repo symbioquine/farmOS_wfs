@@ -7,7 +7,6 @@ which can be used in [GIS software](https://en.wikipedia.org/wiki/Geographic_inf
 
 * Only supports WFS 1.1.0 / GML 3.1.1 currently
 * Only supports features with single geometries of the types; point, polygon, or line string
-* Currently only supports fixed asset intrinsic geometry - log-based geometry should be coming soon
 * Only supports querying/updating/deleting by simple filters on BBOX or feature id - more complex OGC Filter operations may be supported in the future
 * Only supports the [EPSG:4326](https://epsg.io/4326) spatial reference system (SRS) which farmOS uses - QGIS and similar software generally supports reprojection of data sources into other SRS'
 * Only supports PHP >= 7.4 - earlier versions will not work
@@ -63,6 +62,7 @@ Once the command completes, farmOS should be running at [http://localhost:80](ht
 In the `docker/` directory with the above development environment started;
 
 ```sh
+docker build -t qgis_test_harness qgis_test_harness
 docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests
 ```
 

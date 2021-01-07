@@ -50,3 +50,4 @@
 
 # Ignore misc
 .project
+__pycache__
