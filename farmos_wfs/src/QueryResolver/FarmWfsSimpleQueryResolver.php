@@ -78,7 +78,7 @@ class FarmWfsSimpleQueryResolver {
     $latest_movement_log_query->addField('log', 'id', 'log_id');
     $latest_movement_log_query->addField('log_asset', 'asset_target_id', 'asset_target_id');
     $latest_movement_log_query->addExpression(
-      "row_number() OVER (PARTITION BY log_asset.asset_target_id ORDER BY log_field_data.timestamp desc, log.id)",
+      "ROW_NUMBER() OVER (PARTITION BY log_asset.asset_target_id ORDER BY log_field_data.timestamp DESC, log.id DESC)",
       "row_num");
 
     $log_data_table = $log_storage->getDataTable();
@@ -93,6 +93,8 @@ class FarmWfsSimpleQueryResolver {
 
     $latest_movement_log_query->join($log_asset_table, 'log_asset',
       'log.id = log_asset.entity_id AND log_asset.deleted = 0');
+
+    $latest_movement_log_query->groupBy('log.id')->groupBy('log_asset.asset_target_id');
 
     return $latest_movement_log_query;
   }
