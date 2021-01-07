@@ -9,6 +9,7 @@ services:
         set -ex
 
         wait_db_ready() {
+            true
         }
 
         if [ -d /opt/drupal ] && ! [ "$$(ls -A /opt/drupal/)" ]; then
