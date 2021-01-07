@@ -2,33 +2,40 @@
 
 namespace Drupal\farmos_wfs\QueryResolver;
 
-use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\farmos_wfs\FarmWfsQueryFactory;
 
 class FarmWfsBboxQueryResolver {
 
-  protected $entityTypeManager;
+  protected $queryFactory;
 
-  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
-    $this->entityTypeManager = $entity_type_manager;
+  public function __construct(FarmWfsQueryFactory $query_factory) {
+    $this->queryFactory = $query_factory;
   }
 
   /**
    * Retrieves an array of asset ids by geometry type and bounding box.
    */
   function resolve_query(string $asset_type, array $geometry_types, array $bbox) {
-    $asset_storage = $this->entityTypeManager->getStorage('asset');
+    $asset_query = $this->queryFactory->create_query($asset_type, $geometry_types);
 
-    $query = $asset_storage->getQuery();
+    $fixed_or_mobile_query_group = $asset_query->orConditionGroup();
 
-    $query->condition('type', $asset_type);
-    $query->condition('is_fixed', 1);
-    $query->condition('intrinsic_geometry.geo_type', $geometry_types, 'IN');
+    $fixed_or_mobile_query_group->andConditionGroup()
+      ->condition('asset_field_data.is_fixed', 1)
+      ->condition('intrinsic_geometry.top', $bbox[0], '>=')
+      ->condition('intrinsic_geometry.right', $bbox[1], '>=')
+      ->condition('intrinsic_geometry.bottom', $bbox[2], '<=')
+      ->condition('intrinsic_geometry.left', $bbox[3], '<=');
 
-    $query->condition('intrinsic_geometry.top', $bbox[0], '>=');
-    $query->condition('intrinsic_geometry.right', $bbox[1], '>=');
-    $query->condition('intrinsic_geometry.bottom', $bbox[2], '<=');
-    $query->condition('intrinsic_geometry.left', $bbox[3], '<=');
+    $fixed_or_mobile_query_group->andConditionGroup()
+      ->condition('asset_field_data.is_fixed', 0)
+      ->condition('log_geometry.geometry_top', $bbox[0], '>=')
+      ->condition('log_geometry.geometry_right', $bbox[1], '>=')
+      ->condition('log_geometry.geometry_bottom', $bbox[2], '<=')
+      ->condition('log_geometry.geometry_left', $bbox[3], '<=');
 
-    return $query->execute();
+    $result = $asset_query->execute();
+
+    return $result->fetchCol(0);
   }
 }

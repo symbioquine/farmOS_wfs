@@ -54,19 +54,25 @@ services:
      - '@entity_type.bundle.info'
 
 
-  farmos_wfs.simple_query_resolver:
-    class: Drupal\farmos_wfs\QueryResolver\FarmWfsSimpleQueryResolver
+  farmos_wfs.query_factory:
+    class: Drupal\farmos_wfs\FarmWfsQueryFactory
     arguments:
      - '@database'
      - '@entity_type.manager'
      - '@datetime.time'
 
+
+  farmos_wfs.simple_query_resolver:
+    class: Drupal\farmos_wfs\QueryResolver\FarmWfsSimpleQueryResolver
+    arguments:
+     - '@farmos_wfs.query_factory'
+
   farmos_wfs.filter_query_resolver:
     class: Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver
     arguments:
-     - '@entity_type.manager'
+     - '@farmos_wfs.query_factory'
 
   farmos_wfs.bbox_query_resolver:
     class: Drupal\farmos_wfs\QueryResolver\FarmWfsBboxQueryResolver
     arguments:
-     - '@entity_type.manager'
+     - '@farmos_wfs.query_factory'

@@ -2,14 +2,14 @@
 
 namespace Drupal\farmos_wfs\QueryResolver;
 
-use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\farmos_wfs\FarmWfsQueryFactory;
 
 class FarmWfsFilterQueryResolver {
 
-  protected $entityTypeManager;
+  protected $queryFactory;
 
-  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
-    $this->entityTypeManager = $entity_type_manager;
+  public function __construct(FarmWfsQueryFactory $query_factory) {
+    $this->queryFactory = $query_factory;
   }
 
   /**
@@ -56,16 +56,12 @@ class FarmWfsFilterQueryResolver {
       throw new \Exception("Unsupported filter operation: '{$distinct_child_names[0]}'");
     }
 
-    $asset_storage = $this->entityTypeManager->getStorage('asset');
+    $asset_query = $this->queryFactory->create_query($asset_type, $geometry_types);
 
-    $query = $asset_storage->getQuery();
+    $asset_query->condition('uuid', $filter_ids, 'IN');
 
-    $query->condition('type', $asset_type);
-    $query->condition('is_fixed', 1);
-    $query->condition('intrinsic_geometry.geo_type', $geometry_types, 'IN');
+    $result = $asset_query->execute();
 
-    $query->condition('uuid', $filter_ids, 'IN');
-
-    return $query->execute();
+    return $result->fetchCol(0);
   }
 }

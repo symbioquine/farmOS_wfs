@@ -521,18 +521,28 @@ class TestTest(unittest.TestCase):
         created_feature = next(iter(filter(
             lambda f: 'Description for the animal non-fixed point asset created via WFS from QGIS' in str(f.attribute('notes')), features)))
 
-        created_area_id = created_feature.attribute('__uuid')
+        created_asset_id = created_feature.attribute('__uuid')
 
-        asset = self.get_asset_by_type_and_id('animal', created_area_id)
+        asset = self.get_asset_by_type_and_id('animal', created_asset_id)
 
         self.assertEqual(asset['attributes']['name'], "Dolly")
-        # The Drupal entity API adds some markup around our description so just
-        # assert that the description is a substring of it
         self.assertIn(
             "Description for the animal non-fixed point asset created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
         self.assertEqual(asset['attributes']['is_fixed'], False)
         self.assertEqual(asset['attributes']['geometry']
                          ['value'], 'POINT (15 15)')
+
+        with self.subTest("move nonfixed point animal asset"):
+            with edit(vlayer):
+                created_feature.setGeometry(QgsGeometry.fromWkt(
+                    "POINT(11 14)"))
+
+                vlayer.updateFeature(created_feature)
+
+            asset = self.get_asset_by_type_and_id('animal', created_asset_id)
+
+            self.assertEqual(asset['attributes']['geometry']
+                             ['value'], 'POINT (11 14)')
 
     def test_owslib_service_info(self):
         self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
