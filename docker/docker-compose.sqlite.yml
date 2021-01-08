@@ -34,6 +34,7 @@ services:
       - './www:/opt/drupal'
       - './php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini'
       - '../farmos_wfs:/farmos_dev_modules/farmos_wfs'
+      - '../composer.json:/farmos_dev_modules/farmos_wfs/composer.json'
     ports:
       - '80:80'
     environment:
