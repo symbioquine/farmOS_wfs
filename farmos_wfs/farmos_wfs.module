@@ -4,6 +4,8 @@
  * @file
  * Module implementation file.
  */
+use const False\MyClass\true;
+
 const FARMOS_WFS_IMPLEMENTATION_VERSION = '1.1.0';
 
 const FARMOS_WFS_DEFAULT_CRS = 'EPSG:4326';
@@ -103,7 +105,7 @@ function farmos_wfs_loadXml($xml_string) {
   return $dom;
 }
 
-function farmos_wfs_get_xnode_children_with_tag($node, $tag) {
+function farmos_wfs_get_xnode_children_with_tag($node, $tag = null) {
   if (! $node) {
     return [];
   }
@@ -114,6 +116,12 @@ function farmos_wfs_filter_xnodes_by_local_name($nodes, $predicate) {
   return array_values(
     array_filter($nodes,
       function ($n) use ($predicate) {
-        return is_callable($predicate) ? $predicate($n->localName) : $n->localName == $predicate;
+        if ($n instanceof \DOMText) {
+          return FALSE;
+        }
+        if (! $predicate) {
+          return TRUE;
+        }
+        return is_string($predicate) ? $n->localName == $predicate : $predicate($n->localName);
       }));
 }

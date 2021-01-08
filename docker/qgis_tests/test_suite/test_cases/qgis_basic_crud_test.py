@@ -1,112 +1,19 @@
-from collections import defaultdict
-from contextlib import contextmanager
-import json
-import os
-import sys
 import unittest
-from urllib.parse import urlencode
 
-import requests
+import pytest
 
-from oauthlib.oauth2 import LegacyApplicationClient
-from owslib.util import Authentication
-from owslib.wfs import WebFeatureService
-from qgis.core import QgsAuthMethodConfig, QgsJsonUtils, QgsApplication, QgsVectorLayer, QgsFeature, QgsVectorLayerUtils, QgsGeometry, QgsPointXY, edit, QgsEditError, QgsRectangle
-from requests_oauthlib import OAuth2Session, OAuth2
+from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, edit, QgsEditError, QgsRectangle
 
-
-WFS_ENDPOINT = 'http://www/wfs'
-
-OAUTH_ENDPOINT = 'http://www/oauth/token'
-OAUTH_CLIENT_ID = 'farm'
-OAUTH_SCOPE = 'openid'
-OAUTH_USERNAME = 'root'
-OAUTH_PASSWORD = 'test'
+from ..cleanup_old_assets_fixture import cleanup_old_assets
+from ..farmos_constants import *
+from ..requests_oauth_fixture import requests_oauth
+from ..qgis_oauth_cfg_fixture import qgis_oauth_cfg
+from ..qgis_helpers_fixture import qgis_helpers
+from ..farmos_asset_helpers_fixture import farmos_asset_helpers
 
 
-class TestTest(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.setup_qgis_oauth_cfg()
-        cls.setup_requests_oauth()
-        cls.setup_owslib()
-
-        with requests.Session() as s:
-            s.auth = cls.requests_oauth2
-
-            tc = unittest.TestCase('__init__')
-
-            def assert_get_json(url):
-                response = s.get(url)
-
-                if not response.ok:
-                    print(response.text)
-
-                tc.assertTrue(response.ok)
-
-                return response.json()
-
-            def asset_delete_json_api_entity(entity):
-                delete_response = s.delete(
-                    entity['links']['self']['href'])
-
-                if not delete_response.ok:
-                    print(delete_response.text)
-
-                tc.assertTrue(delete_response.ok)
-
-            log_types = assert_get_json(
-                "http://www/api/log_type/log_type")
-
-            for log_type in log_types['data']:
-
-                farm_logs = assert_get_json(
-                    "http://www/api/log/{}?include=asset".format(log_type['attributes']['drupal_internal__id']))
-
-                includes_by_type_and_id = defaultdict(dict)
-
-                for included_entity in farm_logs.get('included', []):
-                    includes_by_type_and_id[included_entity['type']
-                                            ][included_entity['id']] = included_entity
-
-                for log in farm_logs['data']:
-
-                    should_delete_log = False
-
-                    for asset_ref in log['relationships']['asset']['data']:
-                        asset = includes_by_type_and_id.get(
-                            asset_ref['type'], {}).get(asset_ref['id'], None)
-
-                        if asset is None:
-                            continue
-
-                        notes = (asset['attributes'].get(
-                            'notes', None) or {}).get('value', '')
-
-                        if '[created by farmOS_wfs-qgis_tests]' in notes:
-                            should_delete_log = True
-                            break
-
-                    if should_delete_log:
-                        asset_delete_json_api_entity(log)
-
-            asset_types = assert_get_json(
-                "http://www/api/asset_type/asset_type")
-
-            for asset_type in asset_types['data']:
-
-                farm_assets = assert_get_json(
-                    "http://www/api/asset/{}".format(asset_type['attributes']['drupal_internal__id']))
-
-                for asset in farm_assets['data']:
-                    notes = (asset['attributes'].get(
-                        'notes', None) or {}).get('value', '')
-
-                    if not '[created by farmOS_wfs-qgis_tests]' in notes:
-                        continue
-
-                    asset_delete_json_api_entity(asset)
+@pytest.mark.usefixtures("requests_oauth", "cleanup_old_assets", 'qgis_oauth_cfg', 'qgis_helpers', 'farmos_asset_helpers')
+class QgisBasicCrudTest(unittest.TestCase):
 
     def test_qgis_get_point_features(self):
         north_field_id = self.create_asset('land', {
@@ -248,8 +155,6 @@ class TestTest(unittest.TestCase):
 
         self.assertEqual(asset['attributes']['name'], "Example point")
         self.assertEqual(asset['attributes']['land_type'], "other")
-        # The Drupal entity API adds some markup around our description so just
-        # assert that the description is a substring of it
         self.assertIn(
             "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
         self.assertEqual(asset['attributes']['geometry']
@@ -298,8 +203,6 @@ class TestTest(unittest.TestCase):
         asset = self.get_asset_by_type_and_id('water', created_area_id)
 
         self.assertEqual(asset['attributes']['name'], "Example line string")
-        # The Drupal entity API adds some markup around our description so just
-        # assert that the description is a substring of it
         self.assertIn(
             "Description for line string created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
         self.assertEqual(asset['attributes']['geometry']['value'], "LINESTRING (-124.8195734628067 48.41387902376911, -123.9386257383335 45.84233043499754, "
@@ -315,8 +218,6 @@ class TestTest(unittest.TestCase):
             f.setAttribute("name", "Example polygon")
             f.setAttribute(
                 "notes", "Description for polygon created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
-            # For now our geometry logic depends on all the assets being fixed - in the future this should be changed such that there are tests
-            # for creating/updating both fixed and non-fixed assets
             f.setAttribute("is_fixed", 1)
             f.setGeometry(QgsGeometry.fromWkt(
                 "POLYGON((-104.0556 41.0037,-104.0584 44.9949,-111.0539 44.9998,-111.0457 40.9986,-104.0556 41.0006,-104.0556 41.0037))"))
@@ -335,8 +236,6 @@ class TestTest(unittest.TestCase):
         asset = self.get_asset_by_type_and_id('equipment', created_area_id)
 
         self.assertEqual(asset['attributes']['name'], "Example polygon")
-        # The Drupal entity API adds some markup around our description so just
-        # assert that the description is a substring of it
         self.assertIn(
             "Description for polygon created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
         self.assertEqual(asset['attributes']['geometry']['value'],
@@ -380,8 +279,6 @@ class TestTest(unittest.TestCase):
             self.assertEqual(asset['attributes']['name'],
                              "South field (updated)")
             self.assertEqual(asset['attributes']['land_type'], "paddock")
-            # The Drupal entity API adds some markup around our description so just
-            # assert that the description is a substring of it
             self.assertIn(
                 "description", "Sample (updated) south field description... [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
             self.assertEqual(asset['attributes']['geometry']['value'],
@@ -539,213 +436,3 @@ class TestTest(unittest.TestCase):
 
             self.assertEqual(asset['attributes']['geometry']
                              ['value'], 'POINT (11 14)')
-
-    def test_owslib_service_info(self):
-        self.assertEqual(self.wfs11.identification.title, "farmOS OGC WFS API")
-
-        self.assertEqual(self.wfs11.provider.name, "Test0")
-        self.assertEqual(self.wfs11.provider.url, "http://www")
-
-        self.assertSetEqual({operation.name for operation in self.wfs11.operations}, {
-                            'GetCapabilities', 'GetFeature', 'DescribeFeatureType', 'Transaction'})
-
-        self.assertSetEqual(set(self.wfs11.contents), {
-                            'farmos:asset_{asset_type}_{geometry_type}'.format(
-                                asset_type=asset_type, geometry_type=geometry_type)
-                            for asset_type in ('animal', 'equipment', 'land', 'plant', 'structure', 'water')
-                            for geometry_type in ('point', 'linestring', 'polygon')
-                            })
-
-    def test_owslib_land_asset_point_schema(self):
-        self.maxDiff = None
-
-        land_asset_point_schema = self.wfs11.get_schema(
-            'farmos:asset_land_point')
-
-        self.assertDictEqual(land_asset_point_schema, {
-            'properties': {
-                '__id': 'integer',
-                '__uuid': 'string',
-                '__revision_id': 'integer',
-                '__revision_translation_affected': 'boolean',
-                'name': 'string',
-                'data': 'string',
-                'land_type': 'string',
-                'notes': 'string',
-                'is_fixed': 'boolean',
-                'is_location': 'boolean',
-                'archived': 'dateTime',
-                'flag': 'string',
-                'default_langcode': 'boolean',
-                'revision_default': 'boolean',
-                'revision_log_message': 'string',
-            },
-            'required': ['name', 'land_type', 'geometry'],
-            'geometry': 'Point',
-            'geometry_column': 'geometry',
-        })
-
-    def test_owslib_water_asset_line_string_schema(self):
-        self.maxDiff = None
-
-        water_asset_line_string_schema = self.wfs11.get_schema(
-            'farmos:asset_water_linestring')
-
-        self.assertDictEqual(water_asset_line_string_schema, {
-            'properties': {
-                '__id': 'integer',
-                '__uuid': 'string',
-                '__revision_id': 'integer',
-                '__revision_translation_affected': 'boolean',
-                'name': 'string',
-                'data': 'string',
-                'notes': 'string',
-                'is_fixed': 'boolean',
-                'is_location': 'boolean',
-                'archived': 'dateTime',
-                'flag': 'string',
-                'default_langcode': 'boolean',
-                'revision_default': 'boolean',
-                'revision_log_message': 'string',
-            },
-            'required': ['name', 'geometry'],
-            'geometry': 'LineString',
-            'geometry_column': 'geometry',
-        })
-
-    def test_owslib_structure_asset_polygon_schema(self):
-        self.maxDiff = None
-
-        structure_asset_polygon_schema = self.wfs11.get_schema(
-            'farmos:asset_structure_polygon')
-
-        self.assertDictEqual(structure_asset_polygon_schema, {
-            'properties': {
-                '__id': 'integer',
-                '__uuid': 'string',
-                '__revision_id': 'integer',
-                '__revision_translation_affected': 'boolean',
-                'name': 'string',
-                'data': 'string',
-                'structure_type': 'string',
-                'notes': 'string',
-                'is_fixed': 'boolean',
-                'is_location': 'boolean',
-                'archived': 'dateTime',
-                'flag': 'string',
-                'default_langcode': 'boolean',
-                'revision_default': 'boolean',
-                'revision_log_message': 'string',
-            },
-            'required': ['name', 'structure_type', 'geometry'],
-            'geometry': 'Polygon',
-            'geometry_column': 'geometry',
-        })
-
-    def get_qgis_wfs_vector_layer(self, type_name):
-
-        vlayer = QgsVectorLayer(
-            WFS_ENDPOINT + '?' + urlencode(dict(
-                service='WFS',
-                request='GetFeature',
-                version='1.1.0',
-                typename=type_name,
-                authcfg=self.cfg.id(),
-                # This should actually be `restrictToRequestBBOX=1` once
-                # https://github.com/qgis/QGIS/issues/40826 is addressed
-                bbox='1',
-            ), safe=':'), type_name, "WFS")
-
-        self.assertTrue(vlayer.isValid())
-
-        vlayer.reload()
-
-        return vlayer
-
-    def get_asset_by_type_and_id(self, asset_type, asset_id):
-        self.assertIsInstance(asset_id, str)
-
-        with self.requests_session() as s:
-            asset_response = s.get(
-                "http://www/api/asset/{}/{}".format(asset_type, asset_id))
-
-        self.assertTrue(asset_response.ok)
-
-        return asset_response.json()['data']
-
-    def assert_asset_does_not_exist(self, asset_type, asset_id):
-        self.assertIsInstance(asset_id, str)
-
-        with self.requests_session() as s:
-            asset_response = s.get(
-                "http://www/api/asset/{}/{}".format(asset_type, asset_id))
-
-        self.assertEqual(asset_response.status_code, 404)
-
-    def create_asset(self, asset_type, asset_attributes):
-        with self.requests_session() as s:
-            create_response = s.post(
-                'http://www/api/asset/{}'.format(asset_type), json={
-                    "data": {
-                        "type": "asset--" + asset_type,
-                        "attributes": asset_attributes,
-                    },
-                }, headers={'content-type': 'application/vnd.api+json'})
-
-            self.assertTrue(create_response.ok)
-
-            return create_response.json()['data']['id']
-
-    @contextmanager
-    def requests_session(self):
-        with requests.Session() as s:
-            s.auth = self.requests_oauth2
-            yield s
-
-    @classmethod
-    def setup_requests_oauth(cls):
-        oauth_client = LegacyApplicationClient(client_id=OAUTH_CLIENT_ID)
-
-        oauth_session = OAuth2Session(client=oauth_client)
-
-        token = oauth_session.fetch_token(token_url=OAUTH_ENDPOINT,
-                                          username=OAUTH_USERNAME, password=OAUTH_PASSWORD, client_id=OAUTH_CLIENT_ID, scope=OAUTH_SCOPE)
-
-        cls.requests_oauth2 = OAuth2(client=LegacyApplicationClient(
-            client_id=OAUTH_CLIENT_ID), token=token)
-
-    @classmethod
-    def setup_owslib(cls):
-        cls.owslib_auth = Authentication(auth_delegate=cls.requests_oauth2)
-
-        cls.wfs11 = WebFeatureService(
-            url=WFS_ENDPOINT, version='1.1.0', auth=cls.owslib_auth)
-
-    @classmethod
-    def setup_qgis_oauth_cfg(cls):
-        cfg = QgsAuthMethodConfig()
-
-        cfg.setName("test-cfg-method")
-        cfg.setMethod("OAuth2")
-
-        oauth2_config = {
-            "clientId": OAUTH_CLIENT_ID,
-            "configType": 1,
-            "grantFlow": 2,
-            "username": OAUTH_USERNAME,
-            "password": OAUTH_PASSWORD,
-            "persistToken": False,
-            "requestTimeout": 30,
-            "scope": OAUTH_SCOPE,
-            "tokenUrl": OAUTH_ENDPOINT,
-            "version": 1
-        }
-
-        cfg.setConfigMap({'oauth2config': json.dumps(oauth2_config)})
-
-        if not QgsApplication.authManager().masterPasswordIsSet():
-            QgsApplication.authManager().setMasterPassword("test")
-
-        QgsApplication.authManager().storeAuthenticationConfig(cfg)
-
-        cls.cfg = cfg

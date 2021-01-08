@@ -8,13 +8,15 @@
 
 /usr/bin/Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset -nolisten tcp &
 
-TEST_NAME=$1
+QGIS_TEST_MODULE="test_suite.run_tests"
+
+PYTEST_EXTRA_ARGS="$( printf ' "%s"' "$@" )"
 
 LOGFILE=/tmp/qgis_testrunner_$$
 
 TEST_RESULTS_FILE=/tmp/qgis_tests_results_$$.xml
 
-QGIS_TEST_MODULE=${TEST_NAME} TEST_RESULTS_FILE="$TEST_RESULTS_FILE" qgis --version-migration --nologo --code /usr/bin/qgis_testrunner.py $1 2>/dev/null | tee ${LOGFILE}
+QGIS_TEST_MODULE=${QGIS_TEST_MODULE} PYTEST_EXTRA_ARGS="$PYTEST_EXTRA_ARGS" TEST_RESULTS_FILE="$TEST_RESULTS_FILE" qgis --version-migration --nologo --code /usr/bin/qgis_testrunner.py ${QGIS_TEST_MODULE} 2>/dev/null | tee ${LOGFILE}
 
 # NOTE: EXIT_CODE will always be 0 if "tee" works,
 #       we could `set -o pipefail` to change this

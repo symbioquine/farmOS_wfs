@@ -57,14 +57,30 @@ docker-compose up -d
 Once the command completes, farmOS should be running at [http://localhost:80](http://localhost:80) with the farmOS_wfs module installed. The test site's username and password are 'root' and 'test' respectively.
 
 
-## Running tests
+## Running Tests
 
 In the `docker/` directory with the above development environment started;
 
 ```sh
 docker build -t qgis_test_harness qgis_test_harness
-docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite.run_tests
+docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh
 ```
+
+### More Complex Test Filtering
+
+**Running a single test:**
+
+```sh
+docker run --rm -it --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh test_suite/test_cases/qgis_basic_crud_test.py::QgisBasicCrudTest::test_qgis_create_line_string_water_asset
+```
+
+**Running all 'non-point' qgis tests:**
+
+```sh
+docker run --rm -i --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh -k 'qgis and not point'
+```
+
+*Arguments are passed as-is to pytest. See https://docs.pytest.org/en/stable/usage.html#specifying-tests-selecting-tests for more information.*
 
 ## Formatting tests
 

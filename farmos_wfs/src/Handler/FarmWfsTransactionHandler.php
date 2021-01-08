@@ -45,15 +45,19 @@ class FarmWfsTransactionHandler {
 
     foreach ($transaction_elem->childNodes as $transaction_action_elem) {
 
-      $action_handler = $action_handlers[$transaction_action_elem->nodeName] ?? null;
+      if ($transaction_action_elem instanceof \DOMText && $transaction_action_elem->isWhitespaceInElementContent()) {
+        continue;
+      }
+
+      $action_handler = $action_handlers[$transaction_action_elem->localName] ?? null;
 
       if (! $action_handler) {
         return farmos_wfs_makeExceptionReport(
-          function ($eReport, $elem) {
+          function ($eReport, $elem) use ($transaction_action_elem) {
             $eReport->appendChild(
               $elem('Exception', [],
                 $elem('ExceptionText', [],
-                  "Could not understand request body: Transaction actions must be one of Insert, Update, or Delete")));
+                  "Could not understand request body action '{$transaction_action_elem->localName}': Transaction actions must be one of Insert, Update, or Delete")));
           });
       }
 
@@ -145,6 +149,10 @@ class FarmWfsTransactionHandler {
     $handle = $transaction_action_elem->attributes['handle'] ?? null;
 
     foreach ($transaction_action_elem->childNodes as $feature_to_insert) {
+
+      if ($feature_to_insert instanceof \DOMText && $feature_to_insert->isWhitespaceInElementContent()) {
+        continue;
+      }
 
       list ($feature_types, $unknown_type_names) = $this->featureTypeFactoryValidator->type_name_to_validated_feature_types(
         $feature_to_insert->localName);
@@ -314,7 +322,16 @@ class FarmWfsTransactionHandler {
       $logs_to_save = [];
 
       if ($raw_property_name == 'geometry') {
-        $wkt = gml_three_point_one_point_one_to_geophp($property_value_elem->firstChild)->out('wkt');
+        $gml_geometry_elem = farmos_wfs_get_xnode_children_with_tag($property_value_elem)[0];
+
+        $geophp_geometry = gml_three_point_one_point_one_to_geophp($gml_geometry_elem);
+
+        if ($geophp_geometry->geometryType() != $feature_type->getGeometryTypeName()) {
+          throw new \Exception(
+            "Attempted to set geometry of type '{$geophp_geometry->geometryType()}' when expected geometry type should be '{$feature_type->getGeometryTypeName()}'");
+        }
+
+        $wkt = $geophp_geometry->out('wkt');
 
         if ($asset->get('is_fixed')->value) {
           $asset->set('intrinsic_geometry', $wkt);
@@ -451,10 +468,12 @@ class TransactionResults {
 }
 
 function gml_three_point_one_point_one_to_geophp($geometry_elem) {
+  $children_with_tag = 'farmos_wfs_get_xnode_children_with_tag';
+
   switch ($geometry_elem->localName) {
     case 'Point':
 
-      $pos = $geometry_elem->firstChild;
+      $pos = $children_with_tag($geometry_elem, 'pos')[0];
 
       // Check $pos->attributes['srsDimension'] == '2'
 
@@ -464,7 +483,7 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
 
     case 'LineString':
 
-      $posList = $geometry_elem->firstChild;
+      $posList = $children_with_tag($geometry_elem, 'posList')[0];
 
       $coord_pairs = array_chunk(explode(' ', $posList->nodeValue), 2);
 
@@ -478,7 +497,9 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
 
       $lines = array();
 
-      foreach ($geometry_elem->childNodes as $component_elem) {
+      $component_elems = $children_with_tag($geometry_elem);
+
+      foreach ($component_elems as $component_elem) {
 
         $fn = array(
           'exterior' => 'array_unshift',
@@ -486,10 +507,9 @@ function gml_three_point_one_point_one_to_geophp($geometry_elem) {
         )[$component_elem->localName] ?? null;
 
         if ($fn) {
+          $linearRing = $children_with_tag($component_elem, 'LinearRing')[0];
 
-          // Check $component_elem->firstChild->localName == 'LinearRing'
-
-          $posList = $component_elem->firstChild->firstChild;
+          $posList = $children_with_tag($linearRing, 'posList')[0];
 
           // Check $posList->attributes['srsDimension'] == '2'
 
