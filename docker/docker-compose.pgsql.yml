@@ -37,7 +37,7 @@ services:
         su www-data -s /bin/bash <<'EOF'
             composer config repositories.farmos_dev_modules '{"type": "path", "url": "/farmos_dev_modules/farmos_wfs"}'
 
-            composer require symbioquine/farmos_wfs
+            composer require symbioquine/farmos_wfs @dev
 
             drush --root=/opt/drupal pm-enable farmos_wfs
         EOF

@@ -51,3 +51,11 @@
 # Ignore misc
 .project
 __pycache__
+.buildpath
+.pydevproject
+.settings/
+docker/docker-compose.yml
+docker/www/
+docker/db/
+protocol-docs/
+

@@ -60,8 +60,9 @@ class OwsLibSchemaTests(unittest.TestCase):
                 'default_langcode': 'boolean',
                 'revision_default': 'boolean',
                 'revision_log_message': 'string',
+                'status': 'string',
             },
-            'required': ['name', 'land_type', 'geometry'],
+            'required': ['name', 'status', 'land_type', 'geometry'],
             'geometry': 'Point',
             'geometry_column': 'geometry',
         })
@@ -88,8 +89,9 @@ class OwsLibSchemaTests(unittest.TestCase):
                 'default_langcode': 'boolean',
                 'revision_default': 'boolean',
                 'revision_log_message': 'string',
+                'status': 'string',
             },
-            'required': ['name', 'geometry'],
+            'required': ['name', 'status', 'geometry'],
             'geometry': 'LineString',
             'geometry_column': 'geometry',
         })
@@ -117,8 +119,9 @@ class OwsLibSchemaTests(unittest.TestCase):
                 'default_langcode': 'boolean',
                 'revision_default': 'boolean',
                 'revision_log_message': 'string',
+                'status': 'string',
             },
-            'required': ['name', 'structure_type', 'geometry'],
+            'required': ['name', 'status', 'structure_type', 'geometry'],
             'geometry': 'Polygon',
             'geometry_column': 'geometry',
         })

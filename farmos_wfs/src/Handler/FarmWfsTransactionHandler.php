@@ -372,15 +372,22 @@ class FarmWfsTransactionHandler {
 
       $value = $property_value_elem->nodeValue;
 
-      if ($field_definition->getType() == 'list_string') {
-        $options = options_allowed_values($field_definition->getFieldStorageDefinition());
+      if ($field_definition->getType() == 'timestamp') {
+        $datetime = new \DateTime($value);
 
-        if (! array_key_exists($value, $options)) {
-          throw new \Exception("Attempted to set unknown value of '$value' for asset property: $raw_property_name");
-        }
+        $value = $datetime->getTimestamp();
       }
 
       $asset->set($raw_property_name, $value);
+
+      $field_data = $asset->get($raw_property_name);
+
+      $constraint_violation_list = $field_data->validate();
+
+      if ($constraint_violation_list && $constraint_violation_list->count() > 0) {
+        throw new \Exception(
+          "Attempted to set an illegal value of '$value' for asset property '$raw_property_name': {$constraint_violation_list->get(0)->getMessage()}");
+      }
 
       return $logs_to_save;
     };

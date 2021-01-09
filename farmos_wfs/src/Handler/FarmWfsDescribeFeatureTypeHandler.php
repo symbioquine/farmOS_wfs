@@ -125,6 +125,7 @@ class FarmWfsDescribeFeatureTypeHandler {
                                             'list_string',
                                             'string_long',
                                             'integer',
+                                            'state',
                                           ];
 
                                           if (in_array($field_type, $supported_field_types)) {
@@ -148,6 +149,8 @@ class FarmWfsDescribeFeatureTypeHandler {
                                               $elem_attrs["type"] = "string";
                                             } elseif ($field_type == 'integer') {
                                               $elem_attrs["type"] = "integer";
+                                            } elseif ($field_type == 'state') {
+                                              $elem_attrs["type"] = "string";
                                             }
 
                                             if (! $field_definition->isRequired()) {

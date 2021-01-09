@@ -263,6 +263,7 @@ class FarmWfsGetFeatureHandler {
                                 'list_string',
                                 'string_long',
                                 'integer',
+                                'state',
                               ];
 
                               if (in_array($field_type, $supported_field_types)) {
@@ -279,15 +280,17 @@ class FarmWfsGetFeatureHandler {
                                   continue;
                                 }
 
-                                $first_field_datum = $field_data->first();
+                                foreach ($field_data as $item) {
+                                  $property_value = $item->getValue()['value'];
 
-                                if (! $first_field_datum) {
-                                  continue;
+                                  if ($field_type == 'timestamp') {
+                                    $datetime = new \DateTime("@{$property_value}");
+
+                                    $property_value = $datetime->format(\DateTime::ISO8601);
+                                  }
+
+                                  $feature->appendChild($elem($property_name, [], $property_value));
                                 }
-
-                                $property_value = $first_field_datum->getValue()['value'];
-
-                                $feature->appendChild($elem($property_name, [], $property_value));
                               }
                             }
                           }));
