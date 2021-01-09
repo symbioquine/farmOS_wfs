@@ -34,7 +34,7 @@ drush en farmos_wfs
 * Client ID: `farm`
 * Username: `your-farmOS-username`
 * Password: `your-farmOS-username`
-* Scope: `user_access`
+* Scope: `openid`
 
 ![image](https://user-images.githubusercontent.com/30754460/104083652-44521700-51f5-11eb-9e32-0d6dd3d3db2e.png)
 
