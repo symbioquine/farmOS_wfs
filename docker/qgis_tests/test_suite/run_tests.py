@@ -10,6 +10,7 @@ TEST_RESULTS_FILE = os.environ['TEST_RESULTS_FILE']
 
 PYTEST_EXTRA_ARGS = os.environ.get('PYTEST_EXTRA_ARGS', '')
 
+
 def run_all():
     """Default function that is called by the runner if nothing else is specified"""
 

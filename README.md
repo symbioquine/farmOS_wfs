@@ -30,21 +30,21 @@ drush en farmos_wfs
 
 * Name: `farmOS0-oauth2-resource-owner` (Name as desired)
 * Grant Flow: Resource Owner
-* Token URL: `https://path-to-your-server.example.com/oauth/token`
+* Token URL: `https://path-to-your-farmOS-server.example.com/oauth/token`
 * Client ID: `farm`
-* Username: `your-farm-os-username`
-* Password: `your-farm-os-username`
+* Username: `your-farmOS-username`
+* Password: `your-farmOS-username`
 * Scope: `user_access`
 
-![image](https://user-images.githubusercontent.com/30754460/103063679-e66fcf00-4566-11eb-9bc8-cddb19c1067c.png)
+![image](https://user-images.githubusercontent.com/30754460/104083652-44521700-51f5-11eb-9e32-0d6dd3d3db2e.png)
 
 #### Configure WFS Server Connection
 
 * Name: `FarmOS0` (Name as desired)
-* URL: `https://path-to-your-server.example.com/wfs`
+* URL: `https://path-to-your-farmOS-server.example.com/wfs`
 * Authentication Config: Choose the OAuth2 configuration created above
 
-![image](https://user-images.githubusercontent.com/30754460/103063809-41092b00-4567-11eb-939f-c02b1cc79b9b.png)
+![image](https://user-images.githubusercontent.com/30754460/104083679-7bc0c380-51f5-11eb-8200-38c225281212.png)
 
 #### Add Layers
 

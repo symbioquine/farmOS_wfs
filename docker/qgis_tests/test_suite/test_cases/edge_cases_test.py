@@ -40,9 +40,11 @@ class EdgeCasesTest(unittest.TestCase):
 
             root = etree.fromstring(response.text.encode('utf8'))
 
-            inserted_feature_id_elem = root.find("./{*}InsertResults/{*}Feature/{*}FeatureId")
+            inserted_feature_id_elem = root.find(
+                "./{*}InsertResults/{*}Feature/{*}FeatureId")
 
-            created_feature_id = inserted_feature_id_elem.attrib['fid'].split('.')[1]
+            created_feature_id = inserted_feature_id_elem.attrib['fid'].split('.')[
+                1]
 
         asset = self.get_asset_by_type_and_id('land', created_feature_id)
 
@@ -78,14 +80,18 @@ class EdgeCasesTest(unittest.TestCase):
 
             root = etree.fromstring(response.text.encode('utf8'))
 
-            summary_total_inserted_elem = root.find("./{*}TransactionSummary/{*}totalInserted")
+            summary_total_inserted_elem = root.find(
+                "./{*}TransactionSummary/{*}totalInserted")
 
             self.assertEqual(summary_total_inserted_elem.text, '0')
 
-            inserted_feature_id_elem = root.find("./{*}InsertResults/{*}Feature/{*}FeatureId")
+            inserted_feature_id_elem = root.find(
+                "./{*}InsertResults/{*}Feature/{*}FeatureId")
 
             self.assertFalse(inserted_feature_id_elem)
 
-            transaction_results_message_elem = root.find("./{*}TransactionResults/{*}Action/{*}Message")
+            transaction_results_message_elem = root.find(
+                "./{*}TransactionResults/{*}Action/{*}Message")
 
-            self.assertEqual(transaction_results_message_elem.text, "Attempted to set geometry of type 'LineString' when expected geometry type should be 'Point'")
+            self.assertEqual(transaction_results_message_elem.text,
+                             "Attempted to set geometry of type 'LineString' when expected geometry type should be 'Point'")
