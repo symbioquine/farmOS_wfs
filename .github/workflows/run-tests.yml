@@ -39,11 +39,8 @@ jobs:
         run: until [ -f ./www/www-container-fs-ready ]; do sleep 0.1; done && while { ! exec 3<>/dev/tcp/localhost/5432; } > /dev/null 2>&1; do sleep 0.1; done
       - name: Do a site-install
         run: docker-compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
-      - name: Add a composer repo for farmOS_wfs
-        run: >-
-          docker-compose exec -u www-data -T www composer config repositories.farmos_wfs_repo '{"type": "vcs", "url": "https://github.com/symbioquine/farmOS_wfs.git"}'
       - name: Add farmOS_wfs-2.x-dev via composer
-        run: docker-compose exec -u www-data -T www composer require symbioquine/farmos_wfs 2.x
+        run: docker-compose exec -u www-data -T www composer require symbioquine/farmos_wfs 2.x-dev
       - name: Use drush to enable farmOS_wfs
         run: docker-compose exec -u www-data -T www drush en farmos_wfs
       - name: Perform Minimal Validation of a GetCapabilities Request

@@ -15,7 +15,14 @@ which can be used in [GIS software](https://en.wikipedia.org/wiki/Geographic_inf
 
 ## Getting Started
 
-Download the latest release from https://github.com/symbioquine/farmOS_wfs/releases to install in your farmOS instance.
+Use Composer and Drush to install farmOS_wfs in farmOS 2.x;
+
+```sh
+composer require symbioquine/farmos_wfs
+drush en farmos_wfs
+```
+
+*Available released versions can be viewed at https://packagist.org/packages/symbioquine/farmos_wfs*
 
 ### QGIS Configuration
 
