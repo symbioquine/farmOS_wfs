@@ -203,6 +203,14 @@ class FarmWfsTransactionHandler {
         }
       }
 
+      $constraint_violation_list = $asset->validate();
+
+      if ($constraint_violation_list && $constraint_violation_list->count() > 0) {
+        $transactionResults->recordInsertionFailure($handle,
+          "Inserted asset would not be valid. Constraint violation at path '{$constraint_violation_list->get(0)->getPropertyPath()}': {$constraint_violation_list->get(0)->getMessage()}");
+        continue;
+      }
+
       $asset->save();
 
       foreach ($asset_logs_to_save as $log_to_save) {
@@ -261,6 +269,14 @@ class FarmWfsTransactionHandler {
           $transactionResults->recordUpdateFailure($e->getMessage());
           continue 2;
         }
+      }
+
+      $constraint_violation_list = $asset->validate();
+
+      if ($constraint_violation_list && $constraint_violation_list->count() > 0) {
+        $transactionResults->recordUpdateFailure(
+          "Updated asset would not be valid. Constraint violation at path '{$constraint_violation_list->get(0)->getPropertyPath()}': {$constraint_violation_list->get(0)->getMessage()}");
+        continue;
       }
 
       $asset->save();
@@ -387,6 +403,12 @@ class FarmWfsTransactionHandler {
       if ($constraint_violation_list && $constraint_violation_list->count() > 0) {
         throw new \Exception(
           "Attempted to set an illegal value of '$value' for asset property '$raw_property_name': {$constraint_violation_list->get(0)->getMessage()}");
+      }
+
+      // For some reason state fields only validate on non-new entities...
+      // https://git.drupalcode.org/project/state_machine/-/blob/2f33a2a78db28e82fb62222cdcce211942aec231/src/Plugin/Validation/Constraint/StateConstraintValidator.php#L19
+      if ($field_definition->getType() == 'state' && ! $field_data->first()->isValid()) {
+        throw new \Exception("Attempted to set an illegal value of '$value' for asset property '$raw_property_name'");
       }
 
       return $logs_to_save;

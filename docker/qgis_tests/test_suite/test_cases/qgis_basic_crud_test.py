@@ -136,6 +136,7 @@ class QgisBasicCrudTest(unittest.TestCase):
             f = QgsFeature(vlayer.fields())
             f.setAttribute("name", "Example point")
             f.setAttribute("land_type", "other")
+            f.setAttribute("status", "archived")
             f.setAttribute(
                 "notes", "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
             f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10, 10)))
@@ -155,6 +156,7 @@ class QgisBasicCrudTest(unittest.TestCase):
 
         self.assertEqual(asset['attributes']['name'], "Example point")
         self.assertEqual(asset['attributes']['land_type'], "other")
+        self.assertEqual(asset['attributes']['status'], "archived")
         self.assertIn(
             "Description for point created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
         self.assertEqual(asset['attributes']['geometry']
@@ -174,6 +176,34 @@ class QgisBasicCrudTest(unittest.TestCase):
 
                 vlayer.addFeature(f)
 
+    def test_qgis_create_asset_with_unknown_status_value(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
+
+        with self.assertRaises(QgsEditError):
+            with edit(vlayer):
+                f = QgsFeature(vlayer.fields())
+                f.setAttribute("name", "Example point with unknown status value")
+                f.setAttribute("land_type", "other")
+                f.setAttribute("status", "not-a-real-status")
+                f.setAttribute(
+                    "notes", "Description for point that shouldn't be created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
+                f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10, 10)))
+
+                vlayer.addFeature(f)
+
+    def test_qgis_create_asset_with_no_name(self):
+        vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
+
+        with self.assertRaises(QgsEditError):
+            with edit(vlayer):
+                f = QgsFeature(vlayer.fields())
+                f.setAttribute("land_type", "other")
+                f.setAttribute(
+                    "notes", "Description for point that shouldn't be created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
+                f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10, 10)))
+
+                vlayer.addFeature(f)
+
     def test_qgis_create_line_string_water_asset(self):
         self.maxDiff = None
 
@@ -183,6 +213,7 @@ class QgisBasicCrudTest(unittest.TestCase):
         with edit(vlayer):
             f = QgsFeature(vlayer.fields())
             f.setAttribute("name", "Example line string")
+            f.setAttribute("archived", "2019-01-09T17:56:13+00:00")
             f.setAttribute(
                 "notes", "Description for line string created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
             f.setGeometry(QgsGeometry.fromWkt("LINESTRING(-124.81957346280673 48.41387902376911,-123.93862573833353 45.842330434997535,"
@@ -203,6 +234,7 @@ class QgisBasicCrudTest(unittest.TestCase):
         asset = self.get_asset_by_type_and_id('water', created_area_id)
 
         self.assertEqual(asset['attributes']['name'], "Example line string")
+        self.assertEqual(asset['attributes']['archived'], "2019-01-09T17:56:13+00:00")
         self.assertIn(
             "Description for line string created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
         self.assertEqual(asset['attributes']['geometry']['value'], "LINESTRING (-124.8195734628067 48.41387902376911, -123.9386257383335 45.84233043499754, "
