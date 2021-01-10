@@ -22,6 +22,7 @@ class EdgeCasesTest(unittest.TestCase):
          <name>TestBoundary6</name>
          <is_fixed>1</is_fixed>
          <land_type>other</land_type>
+         <notes>Sample description... [created by farmOS_wfs-qgis_tests]</notes>
          <geometry>
             <gml:LineString srsName="EPSG:4326">
                <gml:posList srsDimension="2">-1.11684370257966625 -0.24127465857359631 -0.9256449165402123 0.06221547799696503 -0.39757207890743551 -0.13808801213960553 -0.24279210925644934 0.33535660091047037</gml:posList>
@@ -61,6 +62,7 @@ class EdgeCasesTest(unittest.TestCase):
          <name>TestBoundary7</name>
          <is_fixed>1</is_fixed>
          <land_type>other</land_type>
+         <notes>Sample description... [created by farmOS_wfs-qgis_tests]</notes>
          <geometry>
             <gml:LineString srsName="EPSG:4326">
                <gml:posList srsDimension="2">-1.11684370257966625 -0.24127465857359631 -0.9256449165402123 0.06221547799696503 -0.39757207890743551 -0.13808801213960553 -0.24279210925644934 0.33535660091047037</gml:posList>
@@ -95,3 +97,42 @@ class EdgeCasesTest(unittest.TestCase):
 
             self.assertEqual(transaction_results_message_elem.text,
                              "Attempted to set geometry of type 'LineString' when expected geometry type should be 'Point'")
+
+    def test_feature_type_bbox_matches_expected_bbox_of_created_features(self):
+        def create_plant_point(name, lon, lat):
+            self.create_asset('plant', {
+                "name": name,
+                "notes": {
+                    "value": "Sample description... [created by farmOS_wfs-qgis_tests]",
+                },
+                "intrinsic_geometry": {
+                    "value": "POINT({lon} {lat})".format(lon=lon, lat=lat),
+                },
+                "is_fixed": True,
+            })
+
+        create_plant_point('A', 38, 19)
+        create_plant_point('B', 1, 21)
+        create_plant_point('C', -16, -13)
+        create_plant_point('D', 7, -5)
+
+        with self.requests_session() as s:
+            response = s.get(
+                'http://www/wfs?SERVICE=WFS&REQUEST=GetCapabilities')
+
+            root = etree.fromstring(response.text.encode('utf8'))
+
+            feature_type_list = root.findall("./{*}FeatureTypeList/{*}FeatureType")
+
+            for feature_type in feature_type_list:
+
+                if feature_type.find('./{*}Name').text != 'farmos:asset_plant_point':
+                    continue
+
+                bbox = feature_type.find('./{http://www.opengis.net/ows}WGS84BoundingBox')
+
+                lower_corner = bbox.find('./{http://www.opengis.net/ows}LowerCorner')
+                upper_corner = bbox.find('./{http://www.opengis.net/ows}UpperCorner')
+
+                self.assertEqual(lower_corner.text, "-16 -13")
+                self.assertEqual(upper_corner.text, "38 21")

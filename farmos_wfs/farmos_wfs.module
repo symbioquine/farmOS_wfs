@@ -53,12 +53,12 @@ function farmos_wfs_makeDoc($declarator) {
     }
 
     if (isset($elemContent)) {
-      if (is_callable($elemContent)) {
+      if (is_string($elemContent)) {
+        $e->nodeValue = $elemContent;
+      } elseif (is_callable($elemContent)) {
         $elemContent($e, $elem);
       } elseif ($elemContent instanceof DOMNode) {
         $e->appendChild($elemContent);
-      } elseif (is_string($elemContent)) {
-        $e->nodeValue = $elemContent;
       }
     }
 

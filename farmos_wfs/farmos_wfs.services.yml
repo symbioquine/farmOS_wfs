@@ -17,6 +17,7 @@ services:
      - '@config.factory'
      - '@entity_type.bundle.info'
      - '@current_user'
+     - '@farmos_wfs.feature_type_bbox_querier'
 
   farmos_wfs.describe_feature_type_handler:
     class: Drupal\farmos_wfs\Handler\FarmWfsDescribeFeatureTypeHandler
@@ -60,6 +61,12 @@ services:
      - '@database'
      - '@entity_type.manager'
      - '@datetime.time'
+
+  farmos_wfs.feature_type_bbox_querier:
+    class: Drupal\farmos_wfs\FarmWfsFeatureTypeBboxQuerier
+    arguments:
+     - '@database'
+     - '@farmos_wfs.query_factory'
 
 
   farmos_wfs.simple_query_resolver:

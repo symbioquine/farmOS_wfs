@@ -7,6 +7,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfo;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\farmos_wfs\FarmWfsFeatureType;
+use Drupal\farmos_wfs\FarmWfsFeatureTypeBboxQuerier;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -41,6 +42,8 @@ class FarmWfsGetCapabilitiesHandler {
    */
   protected $currentUser;
 
+  protected $featureTypeBboxQuerier;
+
   /**
    * Constructs a new FarmWfsController object.
    *
@@ -54,11 +57,13 @@ class FarmWfsGetCapabilitiesHandler {
    *          The current user.
    */
   public function __construct(RequestStack $request_stack, ConfigFactoryInterface $config_factory,
-    EntityTypeBundleInfo $entityTypeBundleInfo, AccountProxyInterface $currentUser) {
+    EntityTypeBundleInfo $entityTypeBundleInfo, AccountProxyInterface $currentUser,
+    FarmWfsFeatureTypeBboxQuerier $feature_type_bbox_querier) {
     $this->requestStack = $request_stack;
     $this->configFactory = $config_factory;
     $this->entityTypeBundleInfo = $entityTypeBundleInfo;
     $this->currentUser = $currentUser;
+    $this->featureTypeBboxQuerier = $feature_type_bbox_querier;
   }
 
   public function handle(array $query_params) {
@@ -214,13 +219,17 @@ class FarmWfsGetCapabilitiesHandler {
                     $asset_bundles = $this->entityTypeBundleInfo->getBundleInfo('asset');
 
                     foreach ($asset_bundles as $asset_type => $asset_bundle_info) {
+
+                      $bboxes_by_geometry_type = $this->featureTypeBboxQuerier->get_bounding_boxes($asset_type);
+
                       foreach (FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES as $geometry_type) {
 
                         $feature_type = new FarmWfsFeatureType($asset_type, strtolower($geometry_type));
 
                         $featureTypeList->appendChild(
                           $elem('wfs:FeatureType', [],
-                            function ($featureType, $elem) use ($feature_type, $asset_bundle_info) {
+                            function ($featureType, $elem) use ($feature_type, $asset_bundle_info,
+                            $bboxes_by_geometry_type) {
                               $featureType->appendChild($elem('wfs:Name', [], $feature_type->qualifiedTypeName()));
 
                               $geometry_type_name_parts = preg_split('/(?=[A-Z])/', $feature_type->getGeometryTypeName());
@@ -245,31 +254,21 @@ class FarmWfsGetCapabilitiesHandler {
                                     $outputFormats->appendChild($elem('wfs:Format', [], "text/xml; subtype=gml/3.1.1"));
                                   }));
 
-                              // TODO: Re-implement
+                              $bbox = $bboxes_by_geometry_type[$feature_type->getGeometryTypeName()];
 
-                              // $geo_type = strtolower($geometry_type);
-                              //
-                              // $limits = db_query("SELECT
-                              // min(field_farm_geofield_left) AS 'left',
-                              // min(field_farm_geofield_bottom) AS 'bottom',
-                              // max(field_farm_geofield_right) AS 'right',
-                              // max(field_farm_geofield_top) AS 'top'
-                              // FROM
-                              // {field_data_field_farm_geofield} g
-                              // WHERE g.bundle = 'farm_areas' AND g.field_farm_geofield_geo_type = :geo_type
-                              // GROUP BY g.field_farm_geofield_geo_type",
-                              // array(':geo_type' => $geo_type))->fetchAll();
-                              //
-                              // if (!empty($limits)) {
-                              //
-                              // $featureType->appendChild($elem('ows:WGS84BoundingBox', array(
-                              // 'dimensions' => "2",
-                              // ), function($bbox, $elem) use ($limits) {
-                              // $bbox->appendChild($elem('ows:LowerCorner', [], "{$limits[0]->left} {$limits[0]->bottom}"));
-                              // $bbox->appendChild($elem('ows:UpperCorner', [], "{$limits[0]->right} {$limits[0]->top}"));
-                              // }));
-                              //
-                              // }
+                              if (! empty($bbox)) {
+
+                                $featureType->appendChild(
+                                  $elem('ows:WGS84BoundingBox', array(
+                                    'dimensions' => "2",
+                                  ),
+                                    function ($boundingBox, $elem) use ($bbox) {
+                                      $boundingBox->appendChild(
+                                        $elem('ows:LowerCorner', [], "{$bbox['left']} {$bbox['bottom']}"));
+                                      $boundingBox->appendChild(
+                                        $elem('ows:UpperCorner', [], "{$bbox['right']} {$bbox['top']}"));
+                                    }));
+                              }
                             }));
                       }
                     }

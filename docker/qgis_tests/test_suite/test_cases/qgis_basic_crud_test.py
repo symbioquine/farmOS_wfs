@@ -26,7 +26,6 @@ class QgisBasicCrudTest(unittest.TestCase):
             },
             "land_type": "field",
             "is_location": True,
-            "is_field": True,
         })
 
         vlayer = self.get_qgis_wfs_vector_layer('farmos:asset_land_point')
