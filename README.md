@@ -59,7 +59,18 @@ drush en farmos_wfs
 ### Why is this useful?
 
 The farmOS_wfs module allows bidirectional integration between farmOS and GIS with farmOS as the "source of truth" for asset data. This means complex mapping/geospatial tasks can be accomplished using QGIS and always up-to-date
-data directly from farmOS. Without farmOS_wfs doing something similar would involve importing/exporting data between farmOS/GIS formats which would make it hard to maintain a single authoritative data model.
+data directly from farmOS. Without farmOS_wfs, doing something similar would involve importing/exporting data between farmOS/GIS formats which would make it hard to maintain a single authoritative data model.
+
+### Why are the different geometries surfaced as separate feature types (layers)?
+
+farmOS allows any asset to have arbitrary geometry or even collections of geometries, however QGIS - and I believe most GIS tools - expect the geometry of features in a feature type to be homogeneous. The WFS specification
+does allow for features with geometry types like GeometryCollection or MultiGeometry, but then these wouldn't be easily viewable or editable. farmOS_wfs therefore makes the pragmatic choice of serving different geometry types
+as separate layers.
+
+### Why are some fields prefixed with two underscores (e.g. "__uuid")?
+
+These are fields which farmOS/Drupal reports as read-only. Attempts to set values for such fields is not permitted through farmOS_wfs and will produce an error. Generally these fields are also populated automatically which means
+they may change as a result of committing changes via farmOS_wfs, but the new value will not appear until the feature is next fetched from farmOS.
 
 ### Why can't I delete certain assets?
 
@@ -67,10 +78,12 @@ farmOS maintains the validity of asset references. Certain assets - especially n
 
 ## Possible Future Directions
 
+* Surface the `location` field - this needs more thought since the asset reference wouldn't be easily editable and a read-only name would be of limited utility
 * Use database transactions for committing changes to assets
 * Support more complex OGC Filter queries
 * Support additional WFS versions - most importantly WFS 2.0.0 to get full-featured pagination
 * Detect when PostGIS spatial indices exist on the Geofield columns and switch to using PostGIS `ST_` queries - relevant https://www.drupal.org/project/geofield/issues/2969564 & https://www.drupal.org/project/geofield_postgis
+* Consider adding support for MultiPoint, MultiLineString, and MultiPolygon feature layers
 * Consider adding geometry agnostic feature layers only parameterized by the asset type
 * Add tests for OpenLayers as a client
 
