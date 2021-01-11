@@ -14,6 +14,27 @@ from ..farmos_asset_helpers_fixture import farmos_asset_helpers
 class EdgeCasesTest(unittest.TestCase):
     maxDiff = None
 
+    def test_post_fails_with_empty_request_body(self):
+        with self.requests_session() as s:
+            response = s.post(
+                'http://www/wfs?SERVICE=WFS', data='', headers={'content-type': 'application/xml'})
+
+            self.assertEqual(response.status_code, 400)
+
+    def test_post_transaction_fails_with_empty_request_body(self):
+        with self.requests_session() as s:
+            response = s.post(
+                'http://www/wfs?SERVICE=WFS&REQUEST=Transaction', data='', headers={'content-type': 'application/xml'})
+
+            self.assertEqual(response.status_code, 400)
+
+    def test_post_transaction_fails_with_non_xml_request_body(self):
+        with self.requests_session() as s:
+            response = s.post(
+                'http://www/wfs?SERVICE=WFS&REQUEST=Transaction', data='not real xml', headers={'content-type': 'application/xml'})
+
+            self.assertEqual(response.status_code, 400)
+
     def test_should_succeed_to_create_asset_with_formatted_xml(self):
         transaction_xml = '''<?xml version="1.0" encoding="UTF-8"?>
 <Transaction xmlns="http://www.opengis.net/wfs" xmlns:farmos="https://farmos.org/wfs" xmlns:gml="http://www.opengis.net/gml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" service="WFS" version="1.1.0" xsi:schemaLocation="https://farmos.org/wfs http://localhost/wfs?SERVICE=WFS&amp;REQUEST=DescribeFeatureType&amp;VERSION=1.0.0&amp;TYPENAME=farmos:asset_land_linestring">
