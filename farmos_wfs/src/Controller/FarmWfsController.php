@@ -125,14 +125,15 @@ class FarmWfsController extends ControllerBase {
     $service = $query_params['SERVICE'] ?? null;
 
     if ($service !== "WFS") {
-      return farmos_wfs_makeExceptionReport(
-        function ($eReport, $elem) {
-          $eReport->appendChild(
-            $elem('Exception', array(
-              "exceptionCode" => "InvalidParameterValue",
-              "locator" => "service"
-            )));
-        });
+      throw new FarmWfsException(
+        farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) {
+            $eReport->appendChild(
+              $elem('Exception', array(
+                "exceptionCode" => "InvalidParameterValue",
+                "locator" => "service"
+              )));
+          }), 400);
     }
 
     // TODO: Validate version parameter
@@ -152,14 +153,15 @@ class FarmWfsController extends ControllerBase {
     if ($requested_operation_handler) {
       if ($request_method != "GET") {
 
-        return farmos_wfs_makeExceptionReport(
-          function ($eReport, $elem) use ($requested_operation, $request_method) {
-            $eReport->appendChild(
-              $elem('Exception', array(
-                "exceptionCode" => "InvalidParameterValue",
-                "locator" => "request"
-              ), $elem('ExceptionText', [], "The $requested_operation operation is not supported via $request_method")));
-          });
+        throw new FarmWfsException(
+          farmos_wfs_makeExceptionReport(
+            function ($eReport, $elem) use ($requested_operation, $request_method) {
+              $eReport->appendChild(
+                $elem('Exception', array(
+                  "exceptionCode" => "InvalidParameterValue",
+                  "locator" => "request"
+                ), $elem('ExceptionText', [], "The $requested_operation operation is not supported via $request_method")));
+            }), 400);
       }
 
       return $requested_operation_handler->handle($query_params);
@@ -206,28 +208,28 @@ class FarmWfsController extends ControllerBase {
             }), 400);
       }
 
-      // $doc->validate();
-
       if (! $doc->firstChild || $doc->firstChild->nodeName != "Transaction") {
 
-        return farmos_wfs_makeExceptionReport(
-          function ($eReport, $elem) {
-            $eReport->appendChild(
-              $elem('Exception', [],
-                $elem('ExceptionText', [], "Could not understand request body: root element must be a Transaction")));
-          });
+        throw new FarmWfsException(
+          farmos_wfs_makeExceptionReport(
+            function ($eReport, $elem) {
+              $eReport->appendChild(
+                $elem('Exception', [],
+                  $elem('ExceptionText', [], "Could not understand request body: root element must be a Transaction")));
+            }), 400);
       }
 
       return $this->transactionHandler->handle($query_params, $doc->firstChild);
     }
 
-    return farmos_wfs_makeExceptionReport(
-      function ($eReport, $elem) {
-        $eReport->appendChild(
-          $elem('Exception', array(
-            "exceptionCode" => "InvalidParameterValue",
-            "locator" => "request"
-          )));
-      });
+    throw new FarmWfsException(
+      farmos_wfs_makeExceptionReport(
+        function ($eReport, $elem) {
+          $eReport->appendChild(
+            $elem('Exception', array(
+              "exceptionCode" => "InvalidParameterValue",
+              "locator" => "request"
+            )));
+        }), 400);
   }
 }

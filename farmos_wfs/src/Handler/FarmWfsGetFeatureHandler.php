@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\farm_location\AssetLocationInterface;
 use Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator;
+use Drupal\farmos_wfs\Exception\FarmWfsException;
 use Drupal\farmos_wfs\QueryResolver\FarmWfsBboxQueryResolver;
 use Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver;
 use Drupal\farmos_wfs\QueryResolver\FarmWfsSimpleQueryResolver;
@@ -129,34 +130,46 @@ class FarmWfsGetFeatureHandler {
 
     $filter_elem = null;
     if ($filter) {
-      // TODO: error handling
-      $filter_doc = farmos_wfs_loadXml($filter);
-
-      // $doc->validate();
+      try {
+        $filter_doc = farmos_wfs_loadXml($filter);
+      } catch (\Exception $e) {
+        throw new FarmWfsException(
+          farmos_wfs_makeExceptionReport(
+            function ($eReport, $elem) use ($e) {
+              $eReport->appendChild(
+                $elem('Exception', array(
+                  "exceptionCode" => "InvalidParameterValue",
+                  "locator" => "filter"
+                ), $elem('ExceptionText', [], "Invalid filter parameter xml: {$e->getMessage()}")));
+            }), 400);
+      }
 
       if (! $filter_doc->documentElement || $filter_doc->documentElement->localName != "Filter") {
 
-        return farmos_wfs_makeExceptionReport(
-          function ($eReport, $elem) {
-            $eReport->appendChild(
-              $elem('Exception', [],
-                $elem('ExceptionText', [], "Could not understand filter parameter: root element must be a Filter")));
-          });
+        throw new FarmWfsException(
+          farmos_wfs_makeExceptionReport(
+            function ($eReport, $elem) {
+              $eReport->appendChild(
+                $elem('Exception', [],
+                  $elem('ExceptionText', [], "Could not understand filter parameter: root element must be a Filter")));
+            }), 400);
       }
 
       $filter_elem = $filter_doc->documentElement;
     }
 
     if (! empty($bbox) && $filter_elem) {
-      return farmos_wfs_makeExceptionReport(
-        function ($eReport, $elem) {
-          $eReport->appendChild(
-            $elem('Exception', array(
-              "exceptionCode" => "InvalidParameterValue",
-              "locator" => "filter"
-            ),
-              $elem('ExceptionText', [], "Illegal request; please supply only one of the 'filter' or 'bbox' parameters")));
-        });
+      throw new FarmWfsException(
+        farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) {
+            $eReport->appendChild(
+              $elem('Exception', array(
+                "exceptionCode" => "InvalidParameterValue",
+                "locator" => "filter"
+              ),
+                $elem('ExceptionText', [],
+                  "Illegal request; please supply only one of the 'filter' or 'bbox' parameters")));
+          }), 400);
     }
 
     $asset_type = $feature_type->getAssetType();

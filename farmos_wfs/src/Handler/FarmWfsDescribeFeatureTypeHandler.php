@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\farmos_wfs\FarmWfsFeatureType;
 use Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator;
+use Drupal\farmos_wfs\Exception\FarmWfsException;
 
 /**
  * Defines FarmWfsDescribeFeatureTypeHandler class.
@@ -37,14 +38,15 @@ class FarmWfsDescribeFeatureTypeHandler {
       $query_params['TYPENAME'] ?? '');
 
     if (! empty($unknown_type_names)) {
-      return farmos_wfs_makeExceptionReport(
-        function ($eReport, $elem) {
-          $eReport->appendChild(
-            $elem('Exception', array(
-              "exceptionCode" => "InvalidParameterValue",
-              "locator" => "typename"
-            )));
-        });
+      throw new FarmWfsException(
+        farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) {
+            $eReport->appendChild(
+              $elem('Exception', array(
+                "exceptionCode" => "InvalidParameterValue",
+                "locator" => "typename"
+              )));
+          }), 400);
     }
 
     if (empty($feature_types)) {

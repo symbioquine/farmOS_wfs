@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\asset\Entity\Asset;
 use Drupal\farmos_wfs\FarmWfsFeatureType;
 use Drupal\farmos_wfs\FarmWfsFeatureTypeFactoryValidator;
+use Drupal\farmos_wfs\Exception\FarmWfsException;
 use Drupal\farmos_wfs\QueryResolver\FarmWfsFilterQueryResolver;
 
 /**
@@ -160,13 +161,14 @@ class FarmWfsTransactionHandler {
       if (! empty($unknown_type_names)) {
         $unknown_type_name = $unknown_type_names[0];
 
-        return farmos_wfs_makeExceptionReport(
-          function ($eReport, $elem) use ($unknown_type_name) {
-            $eReport->appendChild(
-              $elem('Exception', [],
-                $elem('ExceptionText', [],
-                  "Could not understand request body: Unknown feature type '$unknown_type_name'")));
-          });
+        throw new FarmWfsException(
+          farmos_wfs_makeExceptionReport(
+            function ($eReport, $elem) use ($unknown_type_name) {
+              $eReport->appendChild(
+                $elem('Exception', [],
+                  $elem('ExceptionText', [],
+                    "Could not understand request body: Unknown feature type '$unknown_type_name'")));
+            }), 400);
       }
 
       $feature_type = $feature_types[0];
@@ -231,12 +233,14 @@ class FarmWfsTransactionHandler {
     if (! empty($unknown_type_names)) {
       $unknown_type_name = $unknown_type_names[0];
 
-      return farmos_wfs_makeExceptionReport(
-        function ($eReport, $elem) use ($unknown_type_name) {
-          $eReport->appendChild(
-            $elem('Exception', [],
-              $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$unknown_type_name'")));
-        });
+      throw new FarmWfsException(
+        farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) use ($unknown_type_name) {
+            $eReport->appendChild(
+              $elem('Exception', [],
+                $elem('ExceptionText', [],
+                  "Could not understand request body: Unknown feature type '$unknown_type_name'")));
+          }), 400);
     }
 
     $feature_type = $feature_types[0];
@@ -299,12 +303,14 @@ class FarmWfsTransactionHandler {
     if (! empty($unknown_type_names)) {
       $unknown_type_name = $unknown_type_names[0];
 
-      return farmos_wfs_makeExceptionReport(
-        function ($eReport, $elem) use ($unknown_type_name) {
-          $eReport->appendChild(
-            $elem('Exception', [],
-              $elem('ExceptionText', [], "Could not understand request body: Unknown feature type '$unknown_type_name'")));
-        });
+      throw new FarmWfsException(
+        farmos_wfs_makeExceptionReport(
+          function ($eReport, $elem) use ($unknown_type_name) {
+            $eReport->appendChild(
+              $elem('Exception', [],
+                $elem('ExceptionText', [],
+                  "Could not understand request body: Unknown feature type '$unknown_type_name'")));
+          }), 400);
     }
 
     $feature_type = $feature_types[0];
