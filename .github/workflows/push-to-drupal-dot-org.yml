@@ -1,0 +1,40 @@
+name: Push to drupal.org
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0.0
+
+jobs:
+  build:
+    name: Push to drupal.org
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set RELEASE_VERSION environment variable
+        run: echo "RELEASE_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          path: main
+          fetch-depth: 0
+
+      - name: Setup SSH Keys and known_hosts
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.DRUPAL_DOT_ORG_SSH_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+          ssh-add - <<< "${{ secrets.DRUPAL_DOT_ORG_SSH_PRIVATE_KEY }}"
+
+      - name: Push Changes to Release Branch and Tag on drupal.org Gitlab
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          cd ./main
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git remote add drupal-dot-org git@git.drupal.org:project/farmos_wfs.git
+          git fetch drupal-dot-org
+          git push --follow-tags --force drupal-dot-org 'HEAD:refs/heads/2.x'
