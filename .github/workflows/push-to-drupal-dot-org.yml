@@ -1,18 +1,14 @@
 name: Push to drupal.org
 on:
   push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0.0
+    branches:
+      - '2.x'
 
 jobs:
   build:
     name: Push to drupal.org
     runs-on: ubuntu-latest
     steps:
-      - name: Set RELEASE_VERSION environment variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
-
       - name: Checkout code
         uses: actions/checkout@v2
         with:
@@ -37,4 +33,4 @@ jobs:
           git config user.email github-actions@github.com
           git remote add drupal-dot-org git@git.drupal.org:project/farmos_wfs.git
           git fetch drupal-dot-org
-          git push --follow-tags --force drupal-dot-org 'HEAD:refs/heads/2.x'
+          git push --tags --force drupal-dot-org 'HEAD:refs/heads/2.x'
