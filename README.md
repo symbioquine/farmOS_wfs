@@ -1,6 +1,6 @@
 # farmOS_wfs
 
-[![Latest Stable Version](https://poser.pugx.org/symbioquine/farmos_wfs/v)](//packagist.org/packages/symbioquine/farmos_wfs) [![Total Downloads](https://poser.pugx.org/symbioquine/farmos_wfs/downloads)](//packagist.org/packages/symbioquine/farmos_wfs) [![Latest Unstable Version](https://poser.pugx.org/symbioquine/farmos_wfs/v/unstable)](//packagist.org/packages/symbioquine/farmos_wfs) [![License](https://poser.pugx.org/symbioquine/farmos_wfs/license)](//packagist.org/packages/symbioquine/farmos_wfs) ![Run 2.x tests](https://github.com/symbioquine/farmOS_wfs/workflows/Run%202.x%20tests/badge.svg?branch=2.x)
+[![Latest Stable Version](https://img.shields.io/github/v/tag/symbioquine/farmOS_wfs)](https://www.drupal.org/project/farmos_wfs/releases) [![License](https://img.shields.io/github/license/symbioquine/farmOS_wfs)](https://github.com/symbioquine/farmOS_wfs) ![Run 2.x tests](https://github.com/symbioquine/farmOS_wfs/workflows/Run%202.x%20tests/badge.svg?branch=2.x)
 
 farmOS_wfs provides a WFS module for farmOS. This makes FarmOS areas accessible as a [Web Feature Service (WFS)](https://www.opengeospatial.org/standards/wfs)
 which can be used in [GIS software](https://en.wikipedia.org/wiki/Geographic_information_system) such as [Quantum GIS](https://qgis.org) (QGIS).
