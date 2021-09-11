@@ -394,6 +394,35 @@ class FarmWfsTransactionHandler {
 
       $value = $property_value_elem->nodeValue;
 
+      if ($field_definition->getType() == "entity_reference" && $field_definition->getSetting('target_type') == "taxonomy_term") {
+        $handler_settings = $field_definition->getSetting('handler_settings') ?? [];
+
+        $target_bundles = array_values($handler_settings['target_bundles'] ?? []);
+
+        $query = \Drupal::entityQuery('taxonomy_term');
+        $query->condition('vid', $target_bundles, 'IN');
+        $query->condition('name', $value);
+
+        $tids = $query->execute();
+
+        if (! empty($tids)) {
+          $value = array_values($tids)[0];
+        } else {
+          $auto_create_bundle = $handler_settings['auto_create_bundle'] ?? null;
+
+          if (! $handler_settings['auto_create'] ?? FALSE || !$auto_create_bundle) {
+            throw new \Exception("Attempted to set a taxonomy reference to '$value' which cannot be auto-created for asset property: $raw_property_name");
+          }
+
+          $term = $this->entityTypeManager->getStorage('taxonomy_term')->create([
+            'vid'      => $auto_create_bundle,
+            'name'     => $value,
+          ]);
+          $term->save();
+          $value = $term->id();
+        }
+      }
+
       if ($field_definition->getType() == 'timestamp') {
         $datetime = new \DateTime($value);
 

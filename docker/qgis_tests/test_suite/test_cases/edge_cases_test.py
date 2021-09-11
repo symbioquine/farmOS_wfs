@@ -120,6 +120,10 @@ class EdgeCasesTest(unittest.TestCase):
                              "Attempted to set geometry of type 'LineString' when expected geometry type should be 'Point'")
 
     def test_feature_type_bbox_matches_expected_bbox_of_created_features(self):
+        orange_tree_plant_type_id = self.create_taxonomy_term('plant_type', {
+            "name": "Orange Tree",
+        })
+
         def create_plant_point(name, lon, lat):
             self.create_asset('plant', {
                 "name": name,
@@ -130,6 +134,13 @@ class EdgeCasesTest(unittest.TestCase):
                     "value": "POINT({lon} {lat})".format(lon=lon, lat=lat),
                 },
                 "is_fixed": True,
+            }, relationships={
+                "plant_type": {
+                    "data": {
+                        "type": "taxonomy_term--plant_type",
+                        "id": orange_tree_plant_type_id,
+                    },
+                },
             })
 
         create_plant_point('A', 38, 19)

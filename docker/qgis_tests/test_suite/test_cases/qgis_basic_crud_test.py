@@ -431,6 +431,7 @@ class QgisBasicCrudTest(unittest.TestCase):
         with edit(vlayer):
             f = QgsFeature(vlayer.fields())
             f.setAttribute("name", "Dolly")
+            f.setAttribute("animal_type", "Sheep")
             f.setAttribute(
                 "notes", "Description for the animal non-fixed point asset created via WFS from QGIS [created by farmOS_wfs-qgis_tests]")
             f.setAttribute("is_fixed", 0)
@@ -450,6 +451,11 @@ class QgisBasicCrudTest(unittest.TestCase):
         asset = self.get_asset_by_type_and_id('animal', created_asset_id)
 
         self.assertEqual(asset['attributes']['name'], "Dolly")
+
+        animal_type_ref = self.get_asset_ref_field_by_type_id_and_field(
+            'animal', created_asset_id, 'animal_type')
+        self.assertEqual(animal_type_ref['attributes']['name'], "Sheep")
+
         self.assertIn(
             "Description for the animal non-fixed point asset created via WFS from QGIS [created by farmOS_wfs-qgis_tests]", asset['attributes']['notes']['value'])
         self.assertEqual(asset['attributes']['is_fixed'], False)

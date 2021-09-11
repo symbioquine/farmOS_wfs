@@ -279,13 +279,21 @@ class FarmWfsGetFeatureHandler {
                                 'state',
                               ];
 
-                              if (in_array($field_type, $supported_field_types)) {
+                              if ($field_definition->isReadOnly()) {
+                                $property_name = 'farmos:__' . $field_id;
+                              } else {
+                                $property_name = 'farmos:' . $field_id;
+                              }
 
-                                if ($field_definition->isReadOnly()) {
-                                  $property_name = 'farmos:__' . $field_id;
-                                } else {
-                                  $property_name = 'farmos:' . $field_id;
+                              if ($field_type == "entity_reference" && $field_definition->getSetting('target_type') == "taxonomy_term") {
+                                $ref_entities = $asset->get($field_id)->referencedEntities();
+
+                                foreach ($ref_entities as $ref_entity) {
+                                  $feature->appendChild($elem($property_name, [], $ref_entity->get('name')->getValue()[0]['value']));
                                 }
+                              }
+
+                              if (in_array($field_type, $supported_field_types)) {
 
                                 $field_data = $asset->get($field_id);
 

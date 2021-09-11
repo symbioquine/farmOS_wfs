@@ -67,6 +67,71 @@ class OwsLibSchemaTests(unittest.TestCase):
             'geometry_column': 'geometry',
         })
 
+    def test_owslib_animal_asset_point_schema(self):
+        self.maxDiff = None
+
+        animal_asset_point_schema = self.wfs11.get_schema(
+            'farmos:asset_animal_point')
+
+        self.assertDictEqual(animal_asset_point_schema, {
+            'properties': {
+                '__id': 'integer',
+                '__uuid': 'string',
+                '__revision_id': 'integer',
+                '__revision_translation_affected': 'boolean',
+                'name': 'string',
+                'data': 'string',
+                'animal_type': 'string',
+                'notes': 'string',
+                'is_fixed': 'boolean',
+                'is_location': 'boolean',
+                'archived': 'dateTime',
+                'birthdate': 'dateTime',
+                'is_castrated': 'boolean',
+                'flag': 'string',
+                'nickname': 'string',
+                'sex': 'string',
+                'default_langcode': 'boolean',
+                'revision_default': 'boolean',
+                'revision_log_message': 'string',
+                'status': 'string',
+            },
+            'required': ['name', 'status', 'animal_type', 'geometry'],
+            'geometry': 'Point',
+            'geometry_column': 'geometry',
+        })
+
+    def test_owslib_plant_asset_point_schema(self):
+        self.maxDiff = None
+
+        plant_asset_point_schema = self.wfs11.get_schema(
+            'farmos:asset_plant_point')
+
+        self.assertDictEqual(plant_asset_point_schema, {
+            'properties': {
+                '__id': 'integer',
+                '__uuid': 'string',
+                '__revision_id': 'integer',
+                '__revision_translation_affected': 'boolean',
+                'name': 'string',
+                'data': 'string',
+                'plant_type': 'string',
+                'notes': 'string',
+                'is_fixed': 'boolean',
+                'is_location': 'boolean',
+                'archived': 'dateTime',
+                'flag': 'string',
+                'default_langcode': 'boolean',
+                'revision_default': 'boolean',
+                'revision_log_message': 'string',
+                'status': 'string',
+                'season': 'string',
+            },
+            'required': ['name', 'status', 'plant_type', 'geometry'],
+            'geometry': 'Point',
+            'geometry_column': 'geometry',
+        })
+
     def test_owslib_water_asset_line_string_schema(self):
         self.maxDiff = None
 

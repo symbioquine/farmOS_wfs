@@ -130,18 +130,23 @@ class FarmWfsDescribeFeatureTypeHandler {
                                             'state',
                                           ];
 
-                                          if (in_array($field_type, $supported_field_types)) {
+                                          if ($field_definition->isReadOnly()) {
+                                            $property_name = '__' . $field_id;
+                                          } else {
+                                            $property_name = $field_id;
+                                          }
+
+                                          $is_taxonomy_term_ref = $field_type == "entity_reference" && $field_definition->getSetting('target_type') == "taxonomy_term";
+
+                                          if (in_array($field_type, $supported_field_types) || $is_taxonomy_term_ref) {
 
                                             $elem_attrs = [];
 
-                                            if ($field_definition->isReadOnly()) {
-                                              $elem_attrs["name"] = '__' . $field_id;
-                                            } else {
-                                              $elem_attrs["name"] = $field_id;
-                                            }
+                                            $elem_attrs["name"] = $property_name;
 
                                             if ($field_type == 'string' || $field_type == 'text_long' ||
-                                            $field_type == 'list_string' || $field_type == 'string_long') {
+                                              $field_type == 'list_string' || $field_type == 'string_long' ||
+                                              $is_taxonomy_term_ref) {
                                               $elem_attrs["type"] = "string";
                                             } elseif ($field_type == 'timestamp') {
                                               $elem_attrs["type"] = "dateTime";
