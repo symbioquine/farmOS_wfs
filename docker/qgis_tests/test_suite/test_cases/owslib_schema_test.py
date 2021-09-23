@@ -33,7 +33,7 @@ class OwsLibSchemaTests(unittest.TestCase):
         self.assertSetEqual(set(self.wfs11.contents), {
                             'farmos:asset_{asset_type}_{geometry_type}'.format(
                                 asset_type=asset_type, geometry_type=geometry_type)
-                            for asset_type in ('animal', 'equipment', 'land', 'plant', 'structure', 'water')
+                            for asset_type in ('animal', 'equipment', 'land', 'material', 'plant', 'structure', 'water')
                             for geometry_type in ('point', 'linestring', 'polygon')
                             })
 
@@ -97,6 +97,36 @@ class OwsLibSchemaTests(unittest.TestCase):
                 'status': 'string',
             },
             'required': ['name', 'status', 'animal_type', 'geometry'],
+            'geometry': 'Point',
+            'geometry_column': 'geometry',
+        })
+
+    def test_owslib_material_asset_point_schema(self):
+        self.maxDiff = None
+
+        material_asset_point_schema = self.wfs11.get_schema(
+            'farmos:asset_material_point')
+
+        self.assertDictEqual(material_asset_point_schema, {
+            'properties': {
+                '__id': 'integer',
+                '__uuid': 'string',
+                '__revision_id': 'integer',
+                '__revision_translation_affected': 'boolean',
+                'name': 'string',
+                'data': 'string',
+                'material_type': 'string',
+                'notes': 'string',
+                'is_fixed': 'boolean',
+                'is_location': 'boolean',
+                'archived': 'dateTime',
+                'flag': 'string',
+                'default_langcode': 'boolean',
+                'revision_default': 'boolean',
+                'revision_log_message': 'string',
+                'status': 'string',
+            },
+            'required': ['name', 'status', 'material_type', 'geometry'],
             'geometry': 'Point',
             'geometry_column': 'geometry',
         })
