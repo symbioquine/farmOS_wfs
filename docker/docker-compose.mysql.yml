@@ -29,16 +29,30 @@ services:
         if [ -d /opt/drupal ] && ! [ "$$(ls -A /opt/drupal/)" ]; then
           echo "farmOS codebase not detected. Copying from pre-built files in the Docker image."
           cp -rp /var/farmOS/. /opt/drupal
+
+          mkdir -p /opt/drupal/keys
+          chown -R www-data:www-data /opt/drupal/keys
+          
           wait_db_ready
           su www-data -s /bin/bash -c 'drush site-install farm --locale=en --db-url=mysql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
+
+          echo "
+        \$$settings['file_private_path'] = '/opt/drupal/web/sites/default/private/files';
+
+        " >> /opt/drupal/web/sites/default/settings.php
+
+          mkdir -p /opt/drupal/web/sites/default/private/files
+          chown -R www-data:www-data /opt/drupal/web/sites/default/private/files
         fi
 
         wait_db_ready
 
-        su www-data -s /bin/bash <<'EOF'
+        /bin/bash <<'EOF'
+            drush --root=/opt/drupal pm-enable --yes farm_material
+
             composer config repositories.farmos_dev_modules '{"type": "path", "url": "/farmos_dev_modules/farmos_wfs"}'
 
-            composer require symbioquine/farmos_wfs @dev
+            composer require --with-all-dependencies symbioquine/farmos_wfs @dev
 
             drush --root=/opt/drupal pm-enable farmos_wfs
         EOF

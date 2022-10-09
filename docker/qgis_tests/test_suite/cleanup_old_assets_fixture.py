@@ -1,6 +1,7 @@
 import pytest
 import requests
 import unittest
+from urllib.parse import urlparse
 from collections import defaultdict
 
 
@@ -25,7 +26,7 @@ def cleanup_old_assets(request):
 
         def asset_delete_json_api_entity(entity):
             delete_response = s.delete(
-                entity['links']['self']['href'])
+                urlparse(entity['links']['self']['href'])._replace(query='').geturl())
 
             if not delete_response.ok:
                 print(delete_response.text)

@@ -17,6 +17,6 @@
   "license": "GPL-3.0-or-later",
   "minimum-stability": "dev",
   "require": {
-    "phayes/geophp": "^1.2"
+    "itamair/geophp": "1.3"
   }
 }
