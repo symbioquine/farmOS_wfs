@@ -25,6 +25,6 @@ jobs:
       - name: Perform Minimal Validation of a GetCapabilities Request
         run: |
             set -e
-            OAUTH2_ACCESS_TOKEN=`curl -X POST -d "grant_type=password&username=root&password=test&client_id=farm&scope=openid" http://localhost/oauth/token | grep -Po 'access_token":"\K[^"]+'`
+            OAUTH2_ACCESS_TOKEN=`curl -X POST -d "grant_type=password&username=root&password=test&client_id=farm&client_secret=&scope=openid" http://localhost/oauth/token | grep -Po 'access_token":"\K[^"]+'`
             GET_CAPABILITIES_RESPONSE=`curl --header "Authorization: Bearer $OAUTH2_ACCESS_TOKEN" "http://localhost/wfs?SERVICE=WFS&REQUEST=GetCapabilities"`
             echo $GET_CAPABILITIES_RESPONSE | grep -q '<ows:Title>farmOS OGC WFS API</ows:Title>'
