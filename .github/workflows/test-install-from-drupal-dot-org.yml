@@ -24,7 +24,7 @@ jobs:
         run: docker-compose exec -u www-data -T www drush en farmos_wfs
       - name: Perform Minimal Validation of a GetCapabilities Request
         run: |
-            set -ex
+            set -e
             OAUTH2_ACCESS_TOKEN=`curl -X POST -d "grant_type=password&username=root&password=test&client_id=farm&scope=farm_manager" http://localhost/oauth/token | grep -Po 'access_token":"\K[^"]+'`
             GET_CAPABILITIES_RESPONSE=`curl --header "Authorization: Bearer $OAUTH2_ACCESS_TOKEN" "http://localhost/wfs?SERVICE=WFS&REQUEST=GetCapabilities"`
             echo $GET_CAPABILITIES_RESPONSE | grep -q '<ows:Title>farmOS OGC WFS API</ows:Title>'
