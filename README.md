@@ -36,9 +36,9 @@ drush en farmos_wfs
 * Client ID: `farm`
 * Username: `your-farmOS-username`
 * Password: `your-farmOS-username`
-* Scope: `openid`
+* Scope: `farm_manager`
 
-![image](https://user-images.githubusercontent.com/30754460/104083652-44521700-51f5-11eb-9e32-0d6dd3d3db2e.png)
+![image](https://user-images.githubusercontent.com/30754460/204117300-ea90c4b8-ad88-4571-9aad-3c30881a36b7.png)
 
 #### Configure WFS Server Connection
 
