@@ -15,7 +15,7 @@ services:
   www:
     depends_on:
       - db
-    image: farmos/farmos:2.x-dev
+    image: farmos/farmos:3.1.1
     entrypoint: /bin/bash
     command:
       - -c
@@ -49,6 +49,8 @@ services:
 
         /bin/bash <<'EOF'
             drush --root=/opt/drupal pm-enable --yes farm_material
+            drush --root=/opt/drupal pm-enable --yes simple_oauth_password_grant
+            drush --root=/opt/drupal pm-enable --yes farm_api_default_consumer
 
             composer config repositories.farmos_dev_modules '{"type": "path", "url": "/farmos_dev_modules/farmos_wfs"}'
 

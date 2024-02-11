@@ -46,7 +46,7 @@ class EdgeCasesTest(unittest.TestCase):
          <notes>Sample description... [created by farmOS_wfs-qgis_tests]</notes>
          <geometry>
             <gml:LineString srsName="EPSG:4326">
-               <gml:posList srsDimension="2">-1.11684370257966625 -0.24127465857359631 -0.9256449165402123 0.06221547799696503 -0.39757207890743551 -0.13808801213960553 -0.24279210925644934 0.33535660091047037</gml:posList>
+               <gml:posList srsDimension="2">-1.116843702579666 -0.24127465857359631 -0.9256449165402123 0.06221547799696503 -0.39757207890743551 -0.13808801213960553 -0.24279210925644934 0.33535660091047037</gml:posList>
             </gml:LineString>
          </geometry>
       </asset_land_linestring>
@@ -71,7 +71,7 @@ class EdgeCasesTest(unittest.TestCase):
         asset = self.get_asset_by_type_and_id('land', created_feature_id)
 
         self.assertEqual(asset['attributes']['name'], "TestBoundary6")
-        self.assertEqual(asset['attributes']['geometry']['value'], "LINESTRING (-1.116843702579666 -0.2412746585735963, -0.9256449165402123 0.06221547799696503, "
+        self.assertEqual(asset['attributes']['geometry']['value'], "LINESTRING (-1.116843702579666 -0.2412746585735963, -0.9256449165402123 0.062215477996965, "
                          "-0.3975720789074355 -0.1380880121396055, -0.2427921092564493 0.3353566009104704)")
 
     def test_should_fail_to_create_line_string_asset_in_point_layer(self):

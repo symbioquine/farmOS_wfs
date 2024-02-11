@@ -400,6 +400,7 @@ class FarmWfsTransactionHandler {
         $target_bundles = array_values($handler_settings['target_bundles'] ?? []);
 
         $query = \Drupal::entityQuery('taxonomy_term');
+        $query->accessCheck(TRUE);
         $query->condition('vid', $target_bundles, 'IN');
         $query->condition('name', $value);
 

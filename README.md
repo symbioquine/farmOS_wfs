@@ -12,12 +12,12 @@ which can be used in [GIS software](https://en.wikipedia.org/wiki/Geographic_inf
 * Only supports querying/updating/deleting by simple filters on BBOX or feature id - more complex OGC Filter operations may be supported in the future
 * Only supports the [EPSG:4326](https://epsg.io/4326) spatial reference system (SRS) which farmOS uses - QGIS and similar software generally supports reprojection of data sources into other SRS'
 * Only supports PHP >= 7.4 - earlier versions will not work
-* Only tested against the farmOS 2.x branch - for farmOS 1.x see [farmOS_wfs-7.x-1.x](https://github.com/symbioquine/farmOS_wfs/tree/7.x-1.x)
-* Only tested with QGIS 3.16 - earlier versions may work, but no promises
+* Only tested against the farmOS 3.1.1 - for farmOS 1.x see [farmOS_wfs-7.x-1.x](https://github.com/symbioquine/farmOS_wfs/tree/7.x-1.x)
+* Only tested with QGIS 3.34 - earlier versions may work, but no promises
 
 ## Getting Started
 
-Use Composer and Drush to install farmOS_wfs in farmOS 2.x;
+Use Composer and Drush to install farmOS_wfs in farmOS 3.x;
 
 ```sh
 composer require drupal/farmos_wfs

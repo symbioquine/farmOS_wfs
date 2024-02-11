@@ -2,7 +2,7 @@ name: farmOS WFS
 description: Provides a WFS endpoint for farmOS
 type: module
 package: farmOS Contrib
-core_version_requirement: ^9
+core_version_requirement: ^9 || ^10
 dependencies:
   - drupal:views
   - farm_field

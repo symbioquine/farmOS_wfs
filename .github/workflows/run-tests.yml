@@ -43,6 +43,8 @@ jobs:
         run: docker-compose exec -T www bash -c 'mkdir -p /opt/drupal/keys && chown -R www-data:www-data /opt/drupal/keys'
       - name: Do a site-install
         run: docker-compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
+      - name: Enable oauth prereqs via drush
+        run: docker-compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
       - name: Add farmOS_wfs-2.x-dev via composer
         run: docker-compose exec -T www composer require --with-all-dependencies symbioquine/farmos_wfs 2.x-dev
       - name: Use drush to enable farmOS_wfs
