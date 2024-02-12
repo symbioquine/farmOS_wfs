@@ -131,3 +131,18 @@ docker run --rm -i --name qgis --network=docker_default -v $(pwd)'/qgis_tests:/t
 ```sh
 autopep8 --in-place --recursive docker/qgis_tests/
 ```
+
+### Procedure for pushing new versions
+
+From the [development branch][development branch] of this repository:
+
+```sh
+# Create the commit
+git commit -m "Release version 2.0.1"
+
+# Tag the release
+git tag 2.0.1
+
+# Push the 2.x branch and new tag
+git push --atomic origin HEAD:2.x 2.0.1
+```
