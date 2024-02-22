@@ -21,7 +21,7 @@ jobs:
       - name: Do a site-install
         run: docker-compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
       - name: Add the private files directory config to settings.php
-        run: docker-compose exec -u www-data -T www sh -c 'echo "\$settings[\"file_private_path\"] = \"/opt/drupal/web/sites/default/private/files\";" >> /opt/drupal/web/sites/default/settings.php'
+        run: docker-compose exec -T www sh -c 'echo "\$settings[\"file_private_path\"] = \"/opt/drupal/web/sites/default/private/files\";" >> /opt/drupal/web/sites/default/settings.php'
       - name: Enable oauth prereqs via drush
         run: docker-compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
       - name: Add farmOS_wfs from Drupal.org via composer
