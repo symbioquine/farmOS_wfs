@@ -1,15 +1,15 @@
-name: Run 2.x tests
+name: Run 4.x tests
 on:
   schedule:
     - cron: '0 8 * * *' # Run at 8AM UTC.
   push:
     branches:
-      - '2.x'
-      - '2.x-**'
+      - '4.x'
+      - '4.x-**'
 
 jobs:
-  two-point-x-tests:
-    name: Run 2.x tests
+  four-point-x-tests:
+    name: Run 4.x tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -22,6 +22,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Build QGIS Test Harness Docker image
         run: docker build -t qgis_test_harness docker/qgis_test_harness
+      - name: make www directory
+        run: mkdir -p ./docker/www && sudo chown 33:33 ./docker/www
       - name: Start containers
         run: docker-compose --file ./docker/docker-compose.${{ matrix.dbms }}.yml up -d
       - name: Wait until www container is ready
@@ -29,12 +31,12 @@ jobs:
       - name: Run QGIS tests
         run: docker run --rm --name qgis --network=docker_default -v $(pwd)'/docker/qgis_tests:/tests_directory' qgis_test_harness:latest ./run_tests.sh
 
-  two-point-x-composer-install:
-    name: Test 2.x installation via composer
+  four-point-x-composer-install:
+    name: Test 4.x installation via composer
     runs-on: ubuntu-latest
     steps:
       - name: Get a docker-compose.yml file approximating a production site
-        run: curl https://raw.githubusercontent.com/symbioquine/farmOS_wfs/2.x/docker/docker-compose.prod-demo.yml -o docker-compose.yml
+        run: curl https://raw.githubusercontent.com/symbioquine/farmOS_wfs/4.x/docker/docker-compose.prod-demo.yml -o docker-compose.yml
       - name: Start containers
         run: docker-compose up -d
       - name: Wait until www container is ready
@@ -45,8 +47,8 @@ jobs:
         run: docker-compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
       - name: Enable oauth prereqs via drush
         run: docker-compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
-      - name: Add farmOS_wfs-2.x-dev via composer
-        run: docker-compose exec -T www composer require --with-all-dependencies symbioquine/farmos_wfs 2.x-dev
+      - name: Add farmOS_wfs-4.x-dev via composer
+        run: docker-compose exec -T www composer require --with-all-dependencies symbioquine/farmos_wfs 4.x-dev
       - name: Use drush to enable farmOS_wfs
         run: docker-compose exec -u www-data -T www drush en farmos_wfs
       - name: Perform Minimal Validation of a GetCapabilities Request

@@ -94,7 +94,7 @@ class FarmWfsFeatureTypeBboxQuerier {
     $bboxes_by_geometry_type = [];
 
     foreach (FARMOS_WFS_RECOGNIZED_GEOMETRY_TYPES as $geometry_type) {
-      $rows = $rows_by_geometry_type[$geometry_type];
+      $rows = $rows_by_geometry_type[$geometry_type] ?? [];
 
       $bboxes_by_geometry_type[$geometry_type] = [];
 

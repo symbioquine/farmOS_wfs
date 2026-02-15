@@ -1,6 +1,6 @@
 # farmOS_wfs
 
-[![Latest Stable Version](https://img.shields.io/github/v/tag/symbioquine/farmOS_wfs)](https://www.drupal.org/project/farmos_wfs/releases) [![License](https://img.shields.io/github/license/symbioquine/farmOS_wfs)](https://github.com/symbioquine/farmOS_wfs) ![Run 2.x tests](https://github.com/symbioquine/farmOS_wfs/workflows/Run%202.x%20tests/badge.svg?branch=2.x)
+[![Latest Stable Version](https://img.shields.io/github/v/tag/symbioquine/farmOS_wfs)](https://www.drupal.org/project/farmos_wfs/releases) [![License](https://img.shields.io/github/license/symbioquine/farmOS_wfs)](https://github.com/symbioquine/farmOS_wfs) ![Run 4.x tests](https://github.com/symbioquine/farmOS_wfs/workflows/Run%204.x%20tests/badge.svg?branch=4.x)
 
 farmOS_wfs provides a WFS module for farmOS. This makes FarmOS areas accessible as a [Web Feature Service (WFS)](https://www.opengeospatial.org/standards/wfs)
 which can be used in [GIS software](https://en.wikipedia.org/wiki/Geographic_information_system) such as [Quantum GIS](https://qgis.org) (QGIS).
@@ -12,12 +12,12 @@ which can be used in [GIS software](https://en.wikipedia.org/wiki/Geographic_inf
 * Only supports querying/updating/deleting by simple filters on BBOX or feature id - more complex OGC Filter operations may be supported in the future
 * Only supports the [EPSG:4326](https://epsg.io/4326) spatial reference system (SRS) which farmOS uses - QGIS and similar software generally supports reprojection of data sources into other SRS'
 * Only supports PHP >= 7.4 - earlier versions will not work
-* Only tested against the farmOS 3.1.1 - for farmOS 1.x see [farmOS_wfs-7.x-1.x](https://github.com/symbioquine/farmOS_wfs/tree/7.x-1.x)
+* Only tested against the farmOS 4 - for farmOS 1.x see [farmOS_wfs-7.x-1.x](https://github.com/symbioquine/farmOS_wfs/tree/7.x-1.x)
 * Only tested with QGIS 3.34 - earlier versions may work, but no promises
 
 ## Getting Started
 
-Use Composer and Drush to install farmOS_wfs in farmOS 3.x;
+Use Composer and Drush to install farmOS_wfs in farmOS 4.x;
 
 ```sh
 composer require drupal/farmos_wfs
@@ -138,11 +138,11 @@ From the [development branch][development branch] of this repository:
 
 ```sh
 # Create the commit
-git commit -m "Release version 2.0.1"
+git commit -m "Release version 4.0.1"
 
 # Tag the release
-git tag 2.0.1
+git tag 4.0.1
 
-# Push the 2.x branch and new tag
-git push --atomic origin HEAD:2.x 2.0.1
+# Push the 4.x branch and new tag
+git push --atomic origin HEAD:4.x 2.0.1
 ```

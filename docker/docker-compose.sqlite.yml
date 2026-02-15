@@ -1,7 +1,7 @@
-version: '2'
 services:
   www:
-    image: farmos/farmos:3.1.1
+    image: farmos/farmos:4.0.0-beta2
+    user: root
     entrypoint: /bin/bash
     command:
       - -c
@@ -17,6 +17,8 @@ services:
           cp -rp /var/farmOS/. /opt/drupal
 
           mkdir -p /opt/drupal/keys
+          openssl genrsa -out /opt/drupal/keys/private.key 2048
+          openssl rsa -in /opt/drupal/keys/private.key -pubout -out /opt/drupal/keys/public.key
           chown -R www-data:www-data /opt/drupal/keys
 
           wait_db_ready
@@ -31,10 +33,12 @@ services:
           chown -R www-data:www-data /opt/drupal/web/sites/default/private/files
         fi
 
+        chown www-data:www-data /opt/drupal
+
         wait_db_ready
 
         /bin/bash <<'EOF'
-            drush --root=/opt/drupal pm-enable --yes farm_material
+            drush --root=/opt/drupal pm-enable --yes farm_material farm_water farm_animal farm_plant farm_land farm_animal farm_structure farm_land_types
             drush --root=/opt/drupal pm-enable --yes simple_oauth_password_grant
             drush --root=/opt/drupal pm-enable --yes farm_api_default_consumer
 
@@ -45,7 +49,9 @@ services:
             drush --root=/opt/drupal pm-enable farmos_wfs
         EOF
 
-        exec docker-entrypoint.sh apache2-foreground
+        chmod 777 {/dev/stderr,/dev/stdout}
+
+        su www-data -s /bin/bash -c 'exec docker-entrypoint.sh apache2-foreground'
     volumes:
       - './www:/opt/drupal'
       - './php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini'

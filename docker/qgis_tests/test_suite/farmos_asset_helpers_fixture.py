@@ -58,6 +58,8 @@ def farmos_asset_helpers(request):
                     },
                 }, headers={'content-type': 'application/vnd.api+json'})
 
+            if not create_response.ok:
+                print(create_response.json())
             create_response.raise_for_status()
 
             return create_response.json()['data']['id']

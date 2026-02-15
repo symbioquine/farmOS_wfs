@@ -2,7 +2,7 @@ name: Push to drupal.org
 on:
   push:
     branches:
-      - '2.x'
+      - '4.x'
 
 jobs:
   build:
@@ -33,4 +33,4 @@ jobs:
           git config user.email github-actions@github.com
           git remote add drupal-dot-org git@git.drupal.org:project/farmos_wfs.git
           git fetch drupal-dot-org
-          git push --tags --force drupal-dot-org 'HEAD:refs/heads/2.x'
+          git push --tags --force drupal-dot-org 'HEAD:refs/heads/4.x'
