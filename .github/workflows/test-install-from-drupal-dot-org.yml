@@ -27,7 +27,7 @@ jobs:
       - name: Add the private files directory config to settings.php
         run: docker compose exec -T www sh -c 'echo "\$settings[\"file_private_path\"] = \"/opt/drupal/web/sites/default/private/files\";" >> /opt/drupal/web/sites/default/settings.php'
       - name: Enable oauth prereqs via drush
-        run: docker compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
+        run: docker compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer farm_material farm_water farm_animal farm_plant farm_land farm_animal farm_structure farm_land_types farm_manager farm_worker farm_viewer
       - name: Add farmOS_wfs from Drupal.org via composer
         run: docker compose exec -T www composer require --with-all-dependencies drupal/farmos_wfs
       - name: Use drush to enable farmOS_wfs
