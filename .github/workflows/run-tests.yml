@@ -25,7 +25,7 @@ jobs:
       - name: make www directory
         run: mkdir -p ./docker/www && sudo chown 33:33 ./docker/www
       - name: Start containers
-        run: docker-compose --file ./docker/docker-compose.${{ matrix.dbms }}.yml up -d
+        run: docker compose --file ./docker/docker-compose.${{ matrix.dbms }}.yml up -d
       - name: Wait until www container is ready
         run: until [ -f ./docker/www/www-container-fs-ready ]; do sleep 0.1; done
       - name: Run QGIS tests
@@ -38,19 +38,19 @@ jobs:
       - name: Get a docker-compose.yml file approximating a production site
         run: curl https://raw.githubusercontent.com/symbioquine/farmOS_wfs/4.x/docker/docker-compose.prod-demo.yml -o docker-compose.yml
       - name: Start containers
-        run: docker-compose up -d
+        run: docker compose up -d
       - name: Wait until www container is ready
         run: until [ -f ./www/www-container-fs-ready ]; do sleep 0.1; done && while { ! exec 3<>/dev/tcp/localhost/5432; } > /dev/null 2>&1; do sleep 0.1; done
       - name: Fix keys directory permissions
         run: docker-compose exec -T www bash -c 'mkdir -p /opt/drupal/keys && chown -R www-data:www-data /opt/drupal/keys'
       - name: Do a site-install
-        run: docker-compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
+        run: docker compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
       - name: Enable oauth prereqs via drush
-        run: docker-compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
+        run: docker compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
       - name: Add farmOS_wfs-4.x-dev via composer
-        run: docker-compose exec -T www composer require --with-all-dependencies symbioquine/farmos_wfs 4.x-dev
+        run: docker compose exec -T www composer require --with-all-dependencies symbioquine/farmos_wfs 4.x-dev
       - name: Use drush to enable farmOS_wfs
-        run: docker-compose exec -u www-data -T www drush en farmos_wfs
+        run: docker compose exec -u www-data -T www drush en farmos_wfs
       - name: Perform Minimal Validation of a GetCapabilities Request
         run: |
             set -e

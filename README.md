@@ -144,5 +144,5 @@ git commit -m "Release version 4.0.1"
 git tag 4.0.1
 
 # Push the 4.x branch and new tag
-git push --atomic origin HEAD:4.x 2.0.1
+git push --atomic origin HEAD:4.x 4.0.1
 ```

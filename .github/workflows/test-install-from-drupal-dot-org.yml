@@ -2,6 +2,10 @@ name: Test prod-style installation via composer from Drupal.org
 on:
   schedule:
     - cron: '0 8 * * *' # Run at 8AM UTC.
+  push:
+    branches:
+      - '4.x'
+      - '4.x-**'
 
 jobs:
   prod-style-composer-install-from-drupal-dot-org:
@@ -9,25 +13,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get a docker-compose.yml file approximating a production site
-        run: curl https://raw.githubusercontent.com/symbioquine/farmOS_wfs/2.x/docker/docker-compose.prod-demo.yml -o docker-compose.yml
+        run: curl https://raw.githubusercontent.com/symbioquine/farmOS_wfs/4.x/docker/docker-compose.prod-demo.yml -o docker-compose.yml
       - name: Start containers
-        run: docker-compose up -d
+        run: docker compose up -d
       - name: Wait until www container is ready
         run: until [ -f ./www/www-container-fs-ready ]; do sleep 0.1; done && while { ! exec 3<>/dev/tcp/localhost/5432; } > /dev/null 2>&1; do sleep 0.1; done
       - name: Create the keys directory with the correct permissions
-        run: docker-compose exec -T www bash -c 'mkdir -p /opt/drupal/keys && openssl genrsa -out /opt/drupal/keys/private.key 2048 && openssl rsa -in /opt/drupal/keys/private.key -pubout -out /opt/drupal/keys/public.key && chown -R www-data:www-data /opt/drupal/keys'
+        run: docker compose exec -T www bash -c 'mkdir -p /opt/drupal/keys && openssl genrsa -out /opt/drupal/keys/private.key 2048 && openssl rsa -in /opt/drupal/keys/private.key -pubout -out /opt/drupal/keys/public.key && chown -R www-data:www-data /opt/drupal/keys'
       - name: Create the private files directory with the correct permissions
         run: docker-compose exec -T www bash -c 'mkdir -p /opt/drupal/web/sites/default/private/files && chown -R www-data:www-data /opt/drupal/web/sites/default/private/files'
       - name: Do a site-install
-        run: docker-compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
+        run: docker compose exec -u www-data -T www bash -c 'drush site-install farm --locale=en --db-url=pgsql://farm:farm@db/farm --site-name=Test0 --account-name=root --account-pass=test'
       - name: Add the private files directory config to settings.php
-        run: docker-compose exec -T www sh -c 'echo "\$settings[\"file_private_path\"] = \"/opt/drupal/web/sites/default/private/files\";" >> /opt/drupal/web/sites/default/settings.php'
+        run: docker compose exec -T www sh -c 'echo "\$settings[\"file_private_path\"] = \"/opt/drupal/web/sites/default/private/files\";" >> /opt/drupal/web/sites/default/settings.php'
       - name: Enable oauth prereqs via drush
-        run: docker-compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
+        run: docker compose exec -u www-data -T www drush en simple_oauth_password_grant farm_api_default_consumer
       - name: Add farmOS_wfs from Drupal.org via composer
-        run: docker-compose exec -T www composer require --with-all-dependencies drupal/farmos_wfs
+        run: docker compose exec -T www composer require --with-all-dependencies drupal/farmos_wfs
       - name: Use drush to enable farmOS_wfs
-        run: docker-compose exec -u www-data -T www drush en farmos_wfs
+        run: docker compose exec -u www-data -T www drush en farmos_wfs
       - name: Perform Minimal Validation of a GetCapabilities Request
         run: |
             set -e
