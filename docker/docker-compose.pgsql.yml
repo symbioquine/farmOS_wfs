@@ -51,7 +51,7 @@ services:
         wait_db_ready
 
         /bin/bash <<'EOF'
-            drush --root=/opt/drupal pm-enable --yes farm_material farm_water farm_animal farm_plant farm_land farm_animal farm_structure farm_land_types farm_manager farm_worker farm_viewer
+            drush --root=/opt/drupal pm-enable --yes farm_material farm_water farm_animal farm_plant farm_land farm_structure farm_equipment farm_land_types farm_manager farm_worker farm_viewer
             drush --root=/opt/drupal pm-enable --yes simple_oauth_password_grant
             drush --root=/opt/drupal pm-enable --yes farm_api_default_consumer
 
